@@ -63,14 +63,14 @@ export const authOptions = {
           .update({ last_login: new Date().toISOString() })
           .eq("id", user.id);
 
-        // Return user object (without password hash)
+        // Return user object (without password hash and profile picture)
+        // Note: Profile picture is excluded to avoid JWT token size issues
         return {
           id: user.id.toString(),
           userId: user.user_id,
           username: user.username,
           email: user.email,
           state: user.state,
-          profilePictureUrl: user.profile_picture_url,
         };
       },
     }),
@@ -82,7 +82,6 @@ export const authOptions = {
         token.username = user.username;
         token.email = user.email;
         token.state = user.state;
-        token.profilePictureUrl = user.profilePictureUrl;
       }
       return token;
     },
@@ -93,7 +92,6 @@ export const authOptions = {
         session.user.username = token.username;
         session.user.email = token.email;
         session.user.state = token.state;
-        session.user.profilePictureUrl = token.profilePictureUrl;
       }
       return session;
     },
