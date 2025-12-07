@@ -30,11 +30,14 @@ export const authOptions = {
           return null;
         }
 
-        // Find user by username OR email
+        // Normalize username/email to lowercase for case-insensitive login
+        const normalizedUsername = credentials.username.toLowerCase().trim();
+
+        // Find user by username OR email (case-insensitive)
         const { data: users, error } = await supabase
           .from("users")
           .select("*")
-          .or(`username.eq.${credentials.username},email.eq.${credentials.username}`);
+          .or(`username.eq.${normalizedUsername},email.eq.${normalizedUsername}`);
 
         if (error || !users || users.length === 0) {
           console.error("User not found:", credentials.username);

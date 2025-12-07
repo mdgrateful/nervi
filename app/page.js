@@ -342,15 +342,16 @@ export default function Home() {
   }
 
   function saveUserId() {
-    const trimmed = userId.trim();
-    if (!trimmed) {
+    // Normalize userId to lowercase for case-insensitive handling
+    const normalized = userId.trim().toLowerCase();
+    if (!normalized) {
       alert("Please enter a name or email so Nervi can remember you.");
       return;
     }
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("nerviUserId", trimmed);
+      window.localStorage.setItem("nerviUserId", normalized);
     }
-    setUserId(trimmed);
+    setUserId(normalized);
     setIsRegistered(true);
   }
 

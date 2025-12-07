@@ -18,8 +18,8 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const {
-      username,
-      email,
+      username: rawUsername,
+      email: rawEmail,
       password,
       state,
       workStartTime,
@@ -27,6 +27,10 @@ export async function POST(request) {
       allowWorkNotifications,
       profilePictureUrl,
     } = body || {};
+
+    // Normalize username and email to lowercase for case-insensitive handling
+    const username = rawUsername ? rawUsername.toLowerCase().trim() : "";
+    const email = rawEmail ? rawEmail.toLowerCase().trim() : "";
 
     // Validation
     if (!username || !email || !password) {
@@ -65,7 +69,7 @@ export async function POST(request) {
       );
     }
 
-    // Check if username already exists
+    // Check if username already exists (case-insensitive)
     const { data: existingUsername } = await supabase
       .from("users")
       .select("id")
@@ -79,7 +83,7 @@ export async function POST(request) {
       );
     }
 
-    // Check if email already exists
+    // Check if email already exists (case-insensitive)
     const { data: existingEmail } = await supabase
       .from("users")
       .select("id")
@@ -99,7 +103,7 @@ export async function POST(request) {
     // Generate unique user ID
     const userId = randomUUID();
 
-    // Create user
+    // Create user with normalized username and email
     const { data, error } = await supabase
       .from("users")
       .insert([
