@@ -169,6 +169,38 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         ☰
       </button>
 
+      {/* Mobile Theme Toggle - Floating Button */}
+      {onToggleTheme && (
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          style={{
+            display: 'none',
+            position: 'fixed',
+            bottom: '100px',
+            right: spacing.md,
+            width: '56px',
+            height: '56px',
+            borderRadius: borderRadius.full,
+            background: theme.accent,
+            color: theme.textInverse,
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '24px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+            zIndex: 950,
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          className="mobile-theme-toggle"
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          {theme.background === lightTheme.background ? '🌙' : '☀️'}
+        </button>
+      )}
+
       {/* Auth Links - Top Right */}
       <div
         style={{
@@ -360,6 +392,22 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         @media (max-width: 480px) {
           .auth-links span {
             display: none;
+          }
+        }
+
+        /* Show mobile theme toggle only on mobile */
+        @media (max-width: 768px) {
+          .mobile-theme-toggle {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+
+        /* Hide mobile theme toggle in landscape */
+        @media (orientation: landscape) and (max-height: 600px) {
+          .mobile-theme-toggle {
+            bottom: ${spacing.md};
           }
         }
       `}</style>
