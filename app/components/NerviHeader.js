@@ -73,7 +73,16 @@ export function NerviHeader({ theme }) {
       </div>
 
       {/* Spacer to prevent content from hiding under fixed header */}
-      <div style={{ height: "120px" }} />
+      <div style={{ height: "120px" }} className="header-spacer" />
+
+      <style jsx>{`
+        /* Hide spacer in landscape orientation */
+        @media (orientation: landscape) and (max-height: 600px) {
+          .header-spacer {
+            display: none !important;
+          }
+        }
+      `}</style>
 
       <style jsx>{`
         .nervi-header {
@@ -99,6 +108,13 @@ export function NerviHeader({ theme }) {
         @media (max-width: 768px) {
           .nervi-header {
             padding: ${spacing.md} ${spacing.md};
+          }
+        }
+
+        /* Hide header in landscape orientation for better mobile UX */
+        @media (orientation: landscape) and (max-height: 600px) {
+          .nervi-header {
+            display: none !important;
           }
         }
       `}</style>

@@ -79,3 +79,17 @@ img {
     position: relative;
   }
 }
+
+/* Landscape orientation adjustments - maximize screen space */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* Reduce padding when header and nav are hidden */
+  main {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  /* Ensure full viewport usage */
+  body {
+    overflow-y: auto;
+  }
+}

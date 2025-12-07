@@ -161,6 +161,13 @@ export function BottomNav({ currentPage = "/", theme }) {
             background: ${theme.background};
           }
         }
+
+        /* Hide bottom nav in landscape orientation for better mobile UX */
+        @media (orientation: landscape) and (max-height: 600px) {
+          .bottom-nav {
+            display: none !important;
+          }
+        }
       `}</style>
     </>
   );
