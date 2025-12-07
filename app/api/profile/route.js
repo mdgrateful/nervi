@@ -86,21 +86,21 @@ export async function POST(request) {
       );
     }
 
-    // Upsert user profile in users table (create or update)
-    const upsertData = {
-      user_id: userId,
+    // Update user profile in users table (user must already exist from signup)
+    const updateData = {
       username: username || userId, // Use username if provided, otherwise use userId
-      email: email || null,
+      email: email || `${userId}@nervi.app`, // Use email if provided, otherwise generate a default
       state: state || null,
       work_start_time: workStartTime || null,
       work_end_time: workEndTime || null,
       allow_work_notifications: allowWorkNotifications || false,
-      profile_picture_url: profilePictureUrl || null,
+      profile_picture_url: profilePictureUrl !== undefined ? profilePictureUrl : null,
     };
 
     const { data, error } = await supabase
       .from("users")
-      .upsert(upsertData, { onConflict: "user_id" })
+      .update(updateData)
+      .eq("user_id", userId)
       .select()
       .single();
 

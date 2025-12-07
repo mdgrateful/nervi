@@ -87,6 +87,7 @@ export default function ProfilePage() {
   const [subscriptionTier, setSubscriptionTier] = useState("free");
   const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [avatarColor, setAvatarColor] = useState("#6366F1"); // Default avatar background color
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -184,14 +185,53 @@ export default function ProfilePage() {
       setProfilePictureFile(null);
       setStatus("Photo updated successfully!");
 
-      // Reload profile to ensure everything is synced
-      await loadProfile(userId);
-
       setTimeout(() => setStatus(""), 3000);
     } catch (err) {
       console.error(err);
       setStatus("Error uploading photo.");
       setProfilePictureFile(null);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (!confirm("Are you sure you want to remove your profile photo?")) {
+      return;
+    }
+
+    setUploading(true);
+    setStatus("Removing photo...");
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId.trim(),
+          username,
+          email,
+          state,
+          workStartTime,
+          workEndTime,
+          allowWorkNotifications,
+          profilePictureUrl: "", // Remove photo by setting empty string
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to remove photo");
+      }
+
+      setProfilePictureUrl("");
+      setProfilePictureFile(null);
+      setStatus("Photo removed successfully!");
+
+      setTimeout(() => setStatus(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setStatus("Error removing photo.");
     } finally {
       setUploading(false);
     }
@@ -456,19 +496,21 @@ export default function ProfilePage() {
                 border: `3px solid ${theme.border}`,
                 margin: "0 auto",
                 marginBottom: spacing.md,
-                background: theme.surface,
+                background: avatarColor,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: typography.fontSizes["3xl"],
-                color: theme.textMuted,
+                color: "#FFFFFF",
+                fontWeight: typography.fontWeights.bold,
               }}
             >
               {username ? username.charAt(0).toUpperCase() : "?"}
             </div>
           )}
 
-          <div style={{ marginBottom: spacing.xs }}>
+          {/* Photo upload and remove buttons */}
+          <div style={{ display: "flex", gap: spacing.sm, justifyContent: "center", marginBottom: spacing.sm }}>
             <input
               type="file"
               accept="image/*"
@@ -487,11 +529,68 @@ export default function ProfilePage() {
                 display: "inline-block",
                 cursor: uploading ? "not-allowed" : "pointer",
                 opacity: uploading ? 0.6 : 1,
+                fontSize: typography.fontSizes.sm,
               }}
             >
               {uploading ? "Uploading..." : profilePictureUrl ? "Change Photo" : "Upload Photo"}
             </label>
+
+            {profilePictureUrl && (
+              <button
+                onClick={handleRemovePhoto}
+                disabled={uploading}
+                style={{
+                  ...components.button,
+                  background: theme.surface,
+                  border: `1px solid ${colors.danger}`,
+                  color: colors.danger,
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  opacity: uploading ? 0.6 : 1,
+                  fontSize: typography.fontSizes.sm,
+                }}
+              >
+                Remove Photo
+              </button>
+            )}
           </div>
+
+          {/* Color picker for default avatar */}
+          {!profilePictureUrl && (
+            <div style={{ marginTop: spacing.md }}>
+              <label style={{ fontSize: typography.fontSizes.xs, color: theme.textMuted, display: "block", marginBottom: spacing.xs }}>
+                Avatar Background Color
+              </label>
+              <div style={{ display: "flex", gap: spacing.xs, justifyContent: "center", flexWrap: "wrap" }}>
+                {[
+                  { name: "Indigo", color: "#6366F1" },
+                  { name: "Purple", color: "#9333EA" },
+                  { name: "Pink", color: "#EC4899" },
+                  { name: "Red", color: "#EF4444" },
+                  { name: "Orange", color: "#F97316" },
+                  { name: "Amber", color: "#F59E0B" },
+                  { name: "Green", color: "#10B981" },
+                  { name: "Teal", color: "#14B8A6" },
+                  { name: "Blue", color: "#3B82F6" },
+                  { name: "Slate", color: "#64748B" },
+                ].map((colorOption) => (
+                  <button
+                    key={colorOption.color}
+                    onClick={() => setAvatarColor(colorOption.color)}
+                    title={colorOption.name}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: borderRadius.full,
+                      background: colorOption.color,
+                      border: avatarColor === colorOption.color ? `3px solid ${theme.textPrimary}` : `2px solid ${theme.border}`,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div
             style={{
