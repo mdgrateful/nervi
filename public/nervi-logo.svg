@@ -1,0 +1,54 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient definitions -->
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#c084fc" />
+    </linearGradient>
+  </defs>
+
+  <!-- Central nucleus (cell body) -->
+  <circle cx="60" cy="60" r="18" fill="url(#gradient1)" />
+
+  <!-- Dendrites (inputs) - branching from top-left -->
+  <path d="M 48 48 Q 30 30, 15 15" stroke="url(#gradient2)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 50 45 Q 35 25, 25 10" stroke="url(#gradient2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Dendrites from top-right -->
+  <path d="M 72 48 Q 90 30, 105 15" stroke="url(#gradient2)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 70 45 Q 85 25, 95 10" stroke="url(#gradient2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Dendrites from left -->
+  <path d="M 42 60 Q 25 60, 10 60" stroke="url(#gradient2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 44 55 Q 30 50, 15 45" stroke="url(#gradient2)" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Dendrites from right -->
+  <path d="M 78 60 Q 95 60, 110 60" stroke="url(#gradient2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 76 55 Q 90 50, 105 45" stroke="url(#gradient2)" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Axon (main output going down) -->
+  <path d="M 60 78 Q 60 90, 60 105" stroke="url(#gradient3)" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <!-- Synaptic connections at axon terminal -->
+  <circle cx="55" cy="105" r="3" fill="url(#gradient3)" opacity="0.8"/>
+  <circle cx="60" cy="108" r="3" fill="url(#gradient3)" opacity="0.8"/>
+  <circle cx="65" cy="105" r="3" fill="url(#gradient3)" opacity="0.8"/>
+
+  <!-- Small connecting branches at dendrite tips -->
+  <circle cx="15" cy="15" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="25" cy="10" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="105" cy="15" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="95" cy="10" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="10" cy="60" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="110" cy="60" r="2.5" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="15" cy="45" r="2" fill="url(#gradient2)" opacity="0.7"/>
+  <circle cx="105" cy="45" r="2" fill="url(#gradient2)" opacity="0.7"/>
+</svg>
