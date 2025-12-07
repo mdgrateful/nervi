@@ -134,11 +134,21 @@ export default function ProfilePage() {
     }
   }
 
-  async function handlePhotoUpload() {
-    if (!userId.trim() || !profilePictureFile) {
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size must be less than 5MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
       return;
     }
 
+    // Auto-upload photo immediately when selected
+    setProfilePictureFile(file);
     setUploading(true);
     setStatus("Uploading photo...");
 
@@ -147,7 +157,7 @@ export default function ProfilePage() {
       const reader = new FileReader();
       const dataUrl = await new Promise((resolve) => {
         reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(profilePictureFile);
+        reader.readAsDataURL(file);
       });
 
       const res = await fetch("/api/profile", {
@@ -173,27 +183,17 @@ export default function ProfilePage() {
       setProfilePictureUrl(dataUrl);
       setProfilePictureFile(null);
       setStatus("Photo updated successfully!");
+
+      // Reload profile to ensure everything is synced
+      await loadProfile(userId);
+
       setTimeout(() => setStatus(""), 3000);
     } catch (err) {
       console.error(err);
       setStatus("Error uploading photo.");
+      setProfilePictureFile(null);
     } finally {
       setUploading(false);
-    }
-  }
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size must be less than 5MB");
-        return;
-      }
-      if (!file.type.startsWith("image/")) {
-        alert("Please select an image file");
-        return;
-      }
-      setProfilePictureFile(file);
     }
   }
 
@@ -475,35 +475,23 @@ export default function ProfilePage() {
               onChange={handleFileChange}
               id="photo-upload"
               style={{ display: "none" }}
+              disabled={uploading}
             />
             <label
               htmlFor="photo-upload"
               style={{
                 ...components.button,
-                background: theme.surface,
+                background: uploading ? theme.surfaceHover : theme.surface,
                 border: `1px solid ${theme.border}`,
                 color: theme.textPrimary,
                 display: "inline-block",
-                cursor: "pointer",
+                cursor: uploading ? "not-allowed" : "pointer",
+                opacity: uploading ? 0.6 : 1,
               }}
             >
-              {profilePictureUrl ? "Change Photo" : "Upload Photo"}
+              {uploading ? "Uploading..." : profilePictureUrl ? "Change Photo" : "Upload Photo"}
             </label>
           </div>
-
-          {profilePictureFile && (
-            <button
-              onClick={handlePhotoUpload}
-              disabled={uploading}
-              style={{
-                ...components.button,
-                ...components.buttonPrimary,
-                marginTop: spacing.xs,
-              }}
-            >
-              {uploading ? "Uploading..." : "Save New Photo"}
-            </button>
-          )}
 
           <div
             style={{
@@ -512,7 +500,7 @@ export default function ProfilePage() {
               marginTop: spacing.xs,
             }}
           >
-            Max file size: 5MB
+            Photo auto-saves when selected • Max size: 5MB
           </div>
         </div>
 
