@@ -946,7 +946,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <span>{input.trim() ? "Send" : "Type to start"}</span>
+                <span>Send</span>
                 {input.trim() && <span style={{ fontSize: "18px" }}>→</span>}
               </>
             )}
@@ -971,7 +971,7 @@ export default function Home() {
               style={inputStyle}
               placeholder={
                 speechSupported
-                  ? "Type or tap the mic to speak…"
+                  ? "Type here or tap the mic to speak…"
                   : "Type what's happening for you right now…"
               }
               value={input}
