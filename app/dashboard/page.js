@@ -136,6 +136,7 @@ export default function DashboardPage() {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: "140px", // Account for fixed header
+    paddingBottom: "140px", // Account for fixed bottom nav
   };
 
   const layoutStyle = {
