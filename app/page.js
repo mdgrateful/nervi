@@ -617,7 +617,7 @@ export default function Home() {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: "140px", // Account for fixed header
-    paddingBottom: "100px", // Account for fixed bottom nav
+    paddingBottom: "180px", // Extra space for bottom nav and input on mobile
   };
 
   const cardStyle = {

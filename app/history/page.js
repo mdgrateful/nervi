@@ -65,7 +65,7 @@ export default function HistoryPage() {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: "140px", // Account for fixed header
-    paddingBottom: "100px", // Account for fixed bottom nav
+    paddingBottom: "140px", // Account for fixed bottom nav
   };
 
   const cardStyle = {
