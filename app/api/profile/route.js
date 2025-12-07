@@ -97,12 +97,69 @@ export async function POST(request) {
       profile_picture_url: profilePictureUrl !== undefined ? profilePictureUrl : null,
     };
 
+    // Try to update existing user
     const { data, error } = await supabase
       .from("users")
       .update(updateData)
       .eq("user_id", userId)
       .select()
       .single();
+
+    // If user doesn't exist (PGRST116) and it's a dev user, try to find by username
+    if (error && error.code === "PGRST116" && userId.startsWith("dev-")) {
+      // Check if user exists by username instead of user_id
+      const { data: existingUser, error: findError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", updateData.username)
+        .single();
+
+      if (existingUser) {
+        // User exists by username, update without changing password
+        const { data: updatedData, error: updateError } = await supabase
+          .from("users")
+          .update(updateData)
+          .eq("username", updateData.username)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("Error updating dev user by username:", updateError);
+          return NextResponse.json(
+            { error: "Error updating profile" },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({ profile: updatedData });
+      } else {
+        // User doesn't exist, create with default password
+        const bcrypt = require("bcryptjs");
+        const devPassword = await bcrypt.hash("dev-password-123", 12);
+
+        const insertData = {
+          user_id: userId,
+          ...updateData,
+          password_hash: devPassword,
+        };
+
+        const { data: newData, error: insertError } = await supabase
+          .from("users")
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Error creating dev user:", insertError);
+          return NextResponse.json(
+            { error: "Error creating profile" },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({ profile: newData });
+      }
+    }
 
     if (error) {
       console.error("Error saving profile:", error);
