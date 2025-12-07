@@ -86,9 +86,11 @@ export function NerviDailyReadCard({ theme, userId }) {
       style={{
         padding: spacing.xl,
         background: theme.surface,
-        border: `1px solid ${theme.border}`,
-        borderRadius: borderRadius.xl,
+        borderTop: `1px solid ${theme.border}`,
+        borderRight: `1px solid ${theme.border}`,
+        borderBottom: `1px solid ${theme.border}`,
         borderLeft: `4px solid ${colors.info}`,
+        borderRadius: borderRadius.xl,
       }}
     >
       <h2
