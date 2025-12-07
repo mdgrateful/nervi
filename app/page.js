@@ -192,6 +192,10 @@ export default function Home() {
 
   const [program, setProgram] = useState("free"); // "free" | "daily-checkin" | "somatic-reset"
 
+  // --- Animated prompting questions state ---
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questionOpacity, setQuestionOpacity] = useState(1);
+
   // --- Mic state ---
 
   const [isRecording, setIsRecording] = useState(false);
@@ -247,6 +251,35 @@ export default function Home() {
       setSessionStartedAt(now);
     }
   }, [sessionId]);
+
+  // Animated prompting questions - cycle through with fade effect
+  useEffect(() => {
+    const promptingQuestions = [
+      "Tell me about your life. Include names, places, emotions, bodily sensations, dramas, successes, or anything you want.",
+      "What's a moment from your past that still lives in your body? Tell me the full story—where you were, who was there, what happened.",
+      "Describe a relationship that shaped you. Use their name. What did they teach you about yourself?",
+      "What grief are you carrying? Tell me about the person, the place, or the dream you lost.",
+      "Share a success or triumph—big or small. What did it feel like in your body when it happened?",
+      "What's a memory you keep returning to? Paint me the scene with every detail you can remember.",
+      "Tell me about a place that changed you. Where was it? What happened there? How did it mark you?",
+      "What trauma or wound are you still healing from? You can share as much or as little as feels safe.",
+      "Describe a moment of pure joy. Who were you with? What were you doing? How did your body feel?",
+      "What's something you witnessed that you've never fully processed? Tell me the whole story.",
+    ];
+
+    const interval = setInterval(() => {
+      // Fade out
+      setQuestionOpacity(0);
+
+      // Wait for fade out, then change question and fade in
+      setTimeout(() => {
+        setCurrentQuestionIndex((prev) => (prev + 1) % promptingQuestions.length);
+        setQuestionOpacity(1);
+      }, 800);
+    }, 8000); // Change every 8 seconds (longer for reading longer prompts)
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Set up browser SpeechRecognition once on mount
   useEffect(() => {
@@ -714,63 +747,6 @@ export default function Home() {
       <div style={cardStyle}>
         <SharedNav currentPage="/" theme={theme} onToggleTheme={toggleTheme} />
 
-
-        {/* User identity row */}
-        <div
-          style={{
-            border: `1px solid ${theme.border}`,
-            borderRadius: borderRadius.md,
-            padding: spacing.sm,
-            marginBottom: spacing.xs,
-            background: theme.surface,
-          }}
-        >
-          {!isRegistered ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <span style={smallBadge}>
-                Who are you? (A name or email — Nervi uses this to remember your
-                journey on this device.)
-              </span>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input
-                  style={{ ...inputStyle, borderRadius: "8px" }}
-                  placeholder="e.g. Brandon, or brandon@email.com"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                />
-                <button
-                  style={{
-                    ...buttonStyle,
-                    padding: `${spacing.sm} ${spacing.md}`,
-                    fontSize: typography.fontSizes.sm,
-                    backgroundColor: colors.success,
-                  }}
-                  type="button"
-                  onClick={saveUserId}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
-              <span style={{
-                fontSize: typography.fontSizes.sm,
-                color: theme.textMuted
-              }}>
-                Chatting as:
-              </span>
-              <span style={{
-                fontSize: typography.fontSizes.sm,
-                fontWeight: typography.fontWeights.semibold,
-                color: theme.textPrimary
-              }}>
-                {userId}
-              </span>
-            </div>
-          )}
-        </div>
-
         {/* Session info + New Session */}
         <div
           style={{
@@ -824,13 +800,62 @@ export default function Home() {
         {/* Chat box */}
         <div style={chatBoxStyle}>
           {messages.length === 0 && (
-            <p style={{
-              fontSize: typography.fontSizes.sm,
-              color: theme.textSecondary
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.lg,
+              padding: spacing.xl,
+              minHeight: "200px",
             }}>
-              You can start by saying something like "My chest feels tight and I
-              can't stop worrying about money."
-            </p>
+              {/* Animated prompting question */}
+              <p style={{
+                fontSize: typography.fontSizes.md,
+                color: theme.textPrimary,
+                fontWeight: typography.fontWeights.medium,
+                textAlign: "center",
+                opacity: questionOpacity,
+                transition: "opacity 0.8s ease-in-out",
+                fontStyle: "italic",
+                lineHeight: "1.6",
+              }}>
+                {[
+                  "Tell me about your life. Include names, places, emotions, bodily sensations, dramas, successes, or anything you want.",
+                  "What's a moment from your past that still lives in your body? Tell me the full story—where you were, who was there, what happened.",
+                  "Describe a relationship that shaped you. Use their name. What did they teach you about yourself?",
+                  "What grief are you carrying? Tell me about the person, the place, or the dream you lost.",
+                  "Share a success or triumph—big or small. What did it feel like in your body when it happened?",
+                  "What's a memory you keep returning to? Paint me the scene with every detail you can remember.",
+                  "Tell me about a place that changed you. Where was it? What happened there? How did it mark you?",
+                  "What trauma or wound are you still healing from? You can share as much or as little as feels safe.",
+                  "Describe a moment of pure joy. Who were you with? What were you doing? How did your body feel?",
+                  "What's something you witnessed that you've never fully processed? Tell me the whole story.",
+                ][currentQuestionIndex]}
+              </p>
+
+              {/* Companion feeding reminder */}
+              <div style={{
+                padding: spacing.md,
+                background: `linear-gradient(135deg, ${colors.info}15, ${colors.success}15)`,
+                borderRadius: borderRadius.lg,
+                border: `1px solid ${theme.border}`,
+                textAlign: "center",
+              }}>
+                <p style={{
+                  fontSize: typography.fontSizes.sm,
+                  color: theme.textSecondary,
+                  lineHeight: "1.6",
+                }}>
+                  <span style={{ fontWeight: typography.fontWeights.semibold, color: theme.textPrimary }}>
+                    💡 The more you share
+                  </span>
+                  , the better Nervi understands your patterns and nervous system.
+                  <br />
+                  Feed your companion with honest reflections to unlock powerful "A-ha moment" insights.
+                </p>
+              </div>
+            </div>
           )}
 
           <div style={{ display: "flex", flexDirection: "column" }}>
