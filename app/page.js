@@ -856,46 +856,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Input row with mic */}
-        <div style={inputRowStyle}>
-          <input
-            style={inputStyle}
-            placeholder={
-              speechSupported
-                ? "Type or tap the mic to speak…"
-                : "Type what’s happening for you right now…"
-            }
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-
-          {/* Mic button */}
-          <button
-            type="button"
-            onClick={toggleRecording}
-            style={{
-              borderRadius: borderRadius.full,
-              padding: `${spacing.sm} ${spacing.md}`,
-              border: isRecording ? `2px solid ${colors.warning}` : `1px solid ${theme.border}`,
-              backgroundColor: isRecording ? theme.surfaceHover : theme.surface,
-              color: colors.warning,
-              cursor: "pointer",
-              fontSize: typography.fontSizes.md,
-              fontWeight: typography.fontWeights.medium,
-              display: "flex",
-              alignItems: "center",
-              gap: spacing.sm,
-              boxShadow: isRecording
-                ? `0 0 0 4px ${theme.background === lightTheme.background ? 'rgba(245, 158, 11, 0.2)' : 'rgba(251, 146, 60, 0.3)'}`
-                : "none",
-              transition: "all 0.15s ease-out",
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>🎙️</span>
-            <span>{isRecording ? "Listening…" : "Speak"}</span>
-          </button>
-
+        {/* Input section with send button on top */}
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
           {/* Send button - Animated focal point */}
           <button
             onClick={sendMessage}
@@ -923,6 +885,7 @@ export default function Home() {
               opacity: loading || !input.trim() ? 0.6 : 1,
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: spacing.sm,
               overflow: "hidden",
             }}
@@ -975,6 +938,48 @@ export default function Home() {
               />
             )}
           </button>
+
+          {/* Input row with smaller mic button */}
+          <div style={inputRowStyle}>
+            <input
+              style={inputStyle}
+              placeholder={
+                speechSupported
+                  ? "Type or tap the mic to speak…"
+                  : "Type what's happening for you right now…"
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+
+            {/* Mic button - smaller */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              style={{
+                borderRadius: borderRadius.full,
+                padding: `${spacing.xs} ${spacing.sm}`,
+                border: isRecording ? `2px solid ${colors.warning}` : `1px solid ${theme.border}`,
+                backgroundColor: isRecording ? theme.surfaceHover : theme.surface,
+                color: colors.warning,
+                cursor: "pointer",
+                fontSize: typography.fontSizes.xs,
+                fontWeight: typography.fontWeights.medium,
+                display: "flex",
+                alignItems: "center",
+                gap: spacing.xs,
+                boxShadow: isRecording
+                  ? `0 0 0 4px ${theme.background === lightTheme.background ? 'rgba(245, 158, 11, 0.2)' : 'rgba(251, 146, 60, 0.3)'}`
+                  : "none",
+                transition: "all 0.15s ease-out",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ fontSize: "14px" }}>🎙️</span>
+              <span>{isRecording ? "Stop" : "Mic"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Add BottomNav and animations */}
