@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import {
   spacing,
   borderRadius,
@@ -11,40 +10,38 @@ import {
 } from "../design-system";
 import { useTheme } from "../hooks/useTheme";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const { theme, toggleTheme } = useTheme();
   const components = getComponents(theme);
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess(false);
 
     try {
-      const result = await signIn("credentials", {
-        username,
-        password,
-        redirect: false,
+      const response = await fetch("/api/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
-      if (result?.error) {
-        setError("Invalid username or password");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to send reset email");
         setLoading(false);
         return;
       }
 
-      // Store userId in localStorage for legacy compatibility
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("nerviUserId", username);
-      }
-
-      // Redirect to dashboard
-      window.location.href = "/dashboard";
+      setSuccess(true);
+      setLoading(false);
     } catch (err) {
       console.error(err);
       setError("An error occurred. Please try again.");
@@ -52,9 +49,9 @@ export default function LoginPage() {
     }
   }
 
-  function goToSignup() {
+  function goToLogin() {
     if (typeof window !== "undefined") {
-      window.location.href = "/signup";
+      window.location.href = "/login";
     }
   }
 
@@ -94,6 +91,74 @@ export default function LoginPage() {
     fontWeight: typography.fontWeights.medium,
   };
 
+  if (success) {
+    return (
+      <main style={containerStyle}>
+        <div style={cardStyle}>
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: "48px",
+                marginBottom: spacing.md,
+              }}
+            >
+              ✉️
+            </div>
+            <h1
+              style={{
+                fontSize: typography.fontSizes["2xl"],
+                fontWeight: typography.fontWeights.bold,
+                color: theme.textPrimary,
+                marginBottom: spacing.xs,
+              }}
+            >
+              Check Your Email
+            </h1>
+            <p
+              style={{
+                fontSize: typography.fontSizes.sm,
+                color: theme.textMuted,
+                marginBottom: spacing.lg,
+              }}
+            >
+              If an account exists with that email, you will receive password
+              reset instructions shortly.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={goToLogin}
+            style={{
+              ...components.button,
+              ...components.buttonPrimary,
+              padding: spacing.md,
+              fontSize: typography.fontSizes.md,
+            }}
+          >
+            Back to Login
+          </button>
+
+          <div style={{ textAlign: "center" }}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: theme.textMuted,
+                cursor: "pointer",
+                fontSize: typography.fontSizes.sm,
+              }}
+            >
+              {theme.background === "#FFFFFF" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={containerStyle}>
       <div style={cardStyle}>
@@ -107,7 +172,7 @@ export default function LoginPage() {
               marginBottom: spacing.xs,
             }}
           >
-            Welcome to Nervi
+            Forgot Password?
           </h1>
           <p
             style={{
@@ -115,47 +180,27 @@ export default function LoginPage() {
               color: theme.textMuted,
             }}
           >
-            Your nervous system companion
+            Enter your email and we'll send you instructions to reset your
+            password
           </p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
+        {/* Reset Form */}
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: spacing.md }}
+        >
           <div>
-            <label style={labelStyle}>Username</label>
+            <label style={labelStyle}>Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
               style={inputStyle}
               required
               autoFocus
             />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              style={inputStyle}
-              required
-            />
-            <div style={{ marginTop: spacing.xs, textAlign: "right" }}>
-              <a
-                href="/forgot-password"
-                style={{
-                  fontSize: typography.fontSizes.sm,
-                  color: theme.textSecondary,
-                  textDecoration: "none",
-                }}
-              >
-                Forgot Password?
-              </a>
-            </div>
           </div>
 
           {error && (
@@ -184,58 +229,25 @@ export default function LoginPage() {
               fontSize: typography.fontSizes.md,
             }}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
 
-        {/* Divider */}
-        <div style={{ position: "relative", textAlign: "center" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: "50%",
-              height: "1px",
-              background: theme.border,
-            }}
-          />
-          <span
-            style={{
-              position: "relative",
-              background: theme.surface,
-              padding: `0 ${spacing.md}`,
-              fontSize: typography.fontSizes.sm,
-              color: theme.textMuted,
-            }}
-          >
-            or
-          </span>
-        </div>
-
-        {/* Sign up link */}
+        {/* Back to login */}
         <div style={{ textAlign: "center" }}>
-          <p
-            style={{
-              fontSize: typography.fontSizes.sm,
-              color: theme.textSecondary,
-              marginBottom: spacing.sm,
-            }}
-          >
-            Don't have an account?
-          </p>
           <button
             type="button"
-            onClick={goToSignup}
+            onClick={goToLogin}
             style={{
-              ...components.button,
-              background: theme.surface,
-              border: `1px solid ${theme.border}`,
-              color: theme.textPrimary,
-              width: "100%",
+              background: "transparent",
+              border: "none",
+              color: theme.textSecondary,
+              cursor: "pointer",
+              fontSize: typography.fontSizes.sm,
+              textDecoration: "underline",
             }}
           >
-            Create Account
+            Back to Login
           </button>
         </div>
 
