@@ -108,6 +108,7 @@ export async function POST(request) {
         tier: tier,
       },
       subscription_data: {
+        trial_period_days: 7, // 7-day free trial
         metadata: {
           userId: user.user_id,
           tier: tier,
