@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { createClient } from "@supabase/supabase-js";
 import { extractUserProfile, generate14DayProgram } from "../../../../lib/programGenerator";
-import { logSecurityEvent } from "../../../../lib/auditLog";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -128,16 +127,7 @@ export async function POST(request) {
 
     console.log(`Created ${tasks.length} tasks for program`);
 
-    // Step 8: Log the event
-    await logSecurityEvent("2-week program generated", {
-      operation: "program_generate",
-      program_id: newProgram.id,
-      version: nextVersion,
-      phase: profile.phase,
-      task_count: tasks.length,
-    });
-
-    // Step 9: Return the program with tasks grouped by day
+    // Step 8: Return the program with tasks grouped by day
     const response = await formatProgramResponse(newProgram.id);
 
     return NextResponse.json(response, { status: 201 });
