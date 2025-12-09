@@ -6,11 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ios:init": "npx cap add ios",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:build": "npm run build && npx cap sync ios && npx cap open ios",
+    "cap:sync": "npx cap sync",
+    "cap:update": "npx cap update"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.86.2",
+    "apn": "^2.2.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "next": "16.0.7",

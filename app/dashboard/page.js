@@ -298,25 +298,35 @@ export default function DashboardPage() {
         return;
       }
 
-// Register (or reuse) the service worker
-await navigator.serviceWorker.register("/notifications-sw.js");
+      console.log("[Push] Permission granted, registering service worker...");
 
-// Wait until the service worker is active and ready
-const registration = await navigator.serviceWorker.ready;
+      // Register (or reuse) the service worker
+      const swRegistration = await navigator.serviceWorker.register("/notifications-sw.js");
+      console.log("[Push] Service worker registered:", swRegistration);
 
-const existing = await registration.pushManager.getSubscription();
-if (existing) {
-  setNotificationsEnabled(true);
-  setNotificationError("");
-  return;
-}
+      // Wait until the service worker is active and ready
+      const registration = await navigator.serviceWorker.ready;
+      console.log("[Push] Service worker ready");
 
-const sub = await registration.pushManager.subscribe({
-  userVisibleOnly: true,
-  applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-});
+      const existing = await registration.pushManager.getSubscription();
+      if (existing) {
+        console.log("[Push] Existing subscription found");
+        setNotificationsEnabled(true);
+        setNotificationError("");
+        return;
+      }
 
+      console.log("[Push] Subscribing to push notifications...");
+      console.log("[Push] VAPID key:", VAPID_PUBLIC_KEY ? "Present" : "Missing");
 
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+
+      console.log("[Push] Subscription created:", sub);
+
+      console.log("[Push] Saving subscription to server...");
       const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -327,15 +337,32 @@ const sub = await registration.pushManager.subscribe({
       });
 
       const data = await res.json();
+      console.log("[Push] Server response:", data);
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to save subscription");
       }
 
+      console.log("[Push] Successfully enabled notifications!");
       setNotificationsEnabled(true);
       setNotificationError("");
     } catch (err) {
-      console.error(err);
-      setNotificationError("Error enabling notifications.");
+      console.error("[Push] Error:", err);
+      console.error("[Push] Error stack:", err.stack);
+
+      let errorMsg = "Error enabling notifications.";
+      if (err.message) {
+        errorMsg = `Error: ${err.message}`;
+      }
+      if (err.name === "NotAllowedError") {
+        errorMsg = "Notification permission was denied.";
+      } else if (err.name === "NotSupportedError") {
+        errorMsg = "Push notifications are not supported on this device.";
+      } else if (err.message && err.message.includes("subscription")) {
+        errorMsg = `Failed to create push subscription: ${err.message}`;
+      }
+
+      setNotificationError(errorMsg);
     }
   }
 

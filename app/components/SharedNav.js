@@ -326,6 +326,9 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         <button type="button" onClick={() => go("/")} style={getButtonStyle("/")}>
           Chat
         </button>
+        <button type="button" onClick={() => go("/program")} style={getButtonStyle("/program")}>
+          Program
+        </button>
         <button type="button" onClick={() => go("/dashboard")} style={getButtonStyle("/dashboard")}>
           Dashboard
         </button>

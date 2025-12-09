@@ -17,9 +17,9 @@ export function BottomNav({ currentPage = "/", theme = lightTheme }) {
 
   const navItems = [
     { path: "/", icon: "💬", label: "Chat" },
+    { path: "/program", icon: "📅", label: "Program" },
     { path: "/dashboard", icon: "🏠", label: "Home" },
     { path: "/notes", icon: "📝", label: "Notes" },
-    { path: "/life-story", icon: "🌱", label: "Story" },
     { path: "/profile", icon: "👤", label: "You" },
   ];
 

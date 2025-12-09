@@ -1,0 +1,181 @@
+
+Nervi 2-Week Program & Schedule Spec
+====================================
+
+Audience: Claude (coding assistant) to implement this on top of the existing Nervi app.
+
+Goal
+----
+Turn Nervi from “good conversations + daily tasks” into a visible, stable, 2-week nervous-system program that:
+- feels like it was written by a trauma-aware nervous-system specialist for THIS user
+- shows a 14-day schedule of practices
+- includes a short “why this is in your plan” explanation for each item
+- stays stable for 2 weeks unless the user explicitly regenerates it
+- powers push notifications so the user doesn't need to remember or write anything down
+
+Phases (internal)
+-----------------
+Internally, treat the user's work as phases, not rigid weeks:
+
+Phase A – Stabilization & Safety
+- Goal: give the user 2–3 reliable regulation tools.
+- Advance to Phase B only after enough check-ins, some practices tried, and a few days of data.
+
+Phase B – Pattern Awareness
+- Goal: map triggers, cycles, and body signals.
+- Advance to Phase C when recurring patterns are clear and user expresses desire to work on them.
+
+Phase C – Repatterning & Identity
+- Goal: start small behavior shifts and identity shifts using the patterns and existing regulation capacity.
+
+These phases can be computed by the LLM from recent memories/notes and stored as simple strings like 'A', 'B', 'C'.
+
+Schema Changes
+--------------
+Reuse existing tables: users, nervi_memories, nervi_notes, life_story_chapters/events/threads, daily_tasks, nervi_master_schedules, nervi_push_subscriptions.
+
+Add a new table nervi_programs to track each 2-week plan:
+
+- id: UUID primary key
+- user_id: references users(id)
+- version: integer (increments per new plan for the user)
+- phase: text ('A', 'B', 'C' or more descriptive)
+- start_date: date
+- end_date: date
+- summary: text (program summary paragraph)
+- created_at, updated_at: timestamps
+
+Extend daily_tasks (or equivalent) with:
+- program_id: UUID referencing nervi_programs(id)
+- plan_version: integer (copy of nervi_programs.version)
+- phase: text (optional)
+- task_type: text (e.g. grounding, breathing, journaling)
+- time_block: text (morning, midday, evening)
+- why_text: text (1–2 sentence explanation)
+
+Program Logic Overview
+----------------------
+When we generate a plan for a user:
+
+1) Gather context:
+   - recent nervi_memories
+   - relevant nervi_notes
+   - life story snippets
+   - user profile (timezone, wake time, etc.)
+
+2) LLM call 1: Build a nervous-system profile JSON that includes:
+   - phase: A/B/C
+   - main states (anxious, numb, wired, etc.)
+   - top triggers (mornings before work, late-night scrolling, conflict, etc.)
+   - common body signals (chest tight, stomach knots, etc.)
+   - short narrative summary of what the user is going through
+
+3) LLM call 2: Given the profile + schedule constraints, generate a 14-day plan JSON:
+   - program_summary: short paragraph describing the focus for the next 2 weeks
+   - days: array of 14 objects, each containing:
+     - date
+     - tasks: list of tasks with:
+       - time_block or approx_time
+       - task_type
+       - title
+       - instructions (short, optional)
+       - why_text (1–2 sentences tying practice to user's patterns)
+
+4) Persist:
+   - Create a new nervi_programs row with phase, version, start_date, end_date, summary.
+   - Soft-delete or archive any existing daily_tasks for that user in the new date range.
+   - Insert new daily_tasks for the 14 days, including program_id, plan_version, phase, task_type, time_block, why_text.
+
+5) Everything should be logged with audit_logs if that system is active, e.g. event_type = 'PROGRAM_GENERATED'.
+
+API Endpoints
+-------------
+Create at least these endpoints:
+
+GET /api/program/current
+- Auth required.
+- Returns current active 2-week program and its tasks, grouped by day.
+- Shape: { program: {...}, days: [ { date, tasks: [...] }, ... ] }
+
+POST /api/program/generate
+- Auth required.
+- Optional body: { forcePhase?: 'A' | 'B' | 'C' } for debugging.
+- Triggers the pipeline described above to create a new 2-week plan starting today (or tomorrow).
+- Returns the same structure as GET /current (newly generated program).
+
+Optional: GET /api/program/status
+- Indicates whether there is enough data to generate a plan.
+- Example response: { hasEnoughData: true, recommendedPhase: 'B', reasoning: 'User has 10 days of check-ins and recurring patterns around late-night scrolling and morning anxiety.' }
+
+Plan Stability and Updates
+--------------------------
+- The current 2-week plan should NOT be silently changed when new information is gathered.
+- Instead, when new important information appears, Nervi can suggest in chat that the user might want to refresh their plan.
+- On the 2-week program page, include a button:
+  - Label: "Update my 2-week plan"
+  - Description text: "Nervi will re-read your recent conversations and notes to rebuild your plan. Past plans are archived."
+
+When the user clicks "Update":
+- A new version is created (version = previous + 1).
+- A new nervi_programs row is created.
+- New daily_tasks rows are generated and stored as above.
+- Existing tasks in that future window are archived/removed.
+- Memories/notes are NOT deleted; only the schedule is regenerated.
+
+Non-Repetition Rules
+--------------------
+- Avoid generating the exact same 14-day sequence twice for the same user.
+- It is allowed to repeat specific practices that worked well, but the LLM should:
+  - keep 1–2 "anchor" practices that the user liked.
+  - rotate or tweak other items to avoid stale, repetitive homework.
+- Supply the LLM with a short summary of the last program's tasks so it can intentionally choose repetition or variation and explain why in the why_text.
+
+2-Week Program Page (Frontend)
+------------------------------
+Create a page (e.g. /program) that:
+
+- Fetches /api/program/current.
+- Shows a summary card:
+  - Title: "Your next 2 weeks with Nervi"
+  - The program summary text (from nervi_programs.summary).
+  - Optional bullet list of 3 focus points.
+
+- Shows a 14-day view:
+  - For each day, show date and its tasks.
+  - For each task: time/time_block, title, and why_text (short, human, tied to user patterns).
+
+- Shows metadata:
+  - "Version 3 — last updated from your conversations on May 5–8" (approximate text using created_at and date range).
+
+- Shows the "Update my 2-week plan" button at the bottom or top.
+
+Push Notifications
+------------------
+- Continue to use existing nervi_push_subscriptions and push routes.
+- Each daily_tasks row tied to a program should contain enough info for push:
+  - date and time or time_block
+  - title
+  - why_text
+- The existing push scheduler should send notifications at or near the scheduled time.
+- Push payloads can use title and a short snippet from why_text to make the reminder feel personal and purpose-driven.
+
+Anti-"Botty" Guidelines
+-----------------------
+For the LLM prompts and UI copy, emphasize:
+- Use the user's own phrases when possible (e.g. "stomach like a rock") in the why_text and program summary.
+- Summaries should sound like a person who knows their story:
+  - e.g. "Over the last 10 days you've told me mornings are rough and nights feel lonely. This plan focuses on..." not generic wellness platitudes.
+- Always tie practices to specific states/triggers, not generic advice.
+- Use collaborative language: "we're testing", "we're focusing on", "this gives your system..." rather than commands.
+
+Implementation Order for Claude
+-------------------------------
+1) Add nervi_programs table and extend daily_tasks with program-related fields.
+2) Implement backend helpers:
+   - LLM profile extraction
+   - LLM plan generation
+3) Implement /api/program/generate and /api/program/current endpoints.
+4) Build the 2-week program page using these endpoints.
+5) Connect the "Update my 2-week plan" button to /api/program/generate.
+6) Ensure push notification logic is compatible with program-based daily_tasks.
+7) Optional: implement /api/program/status and surface "Nervi is almost ready to build your first plan" to new users.
