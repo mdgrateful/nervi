@@ -8,6 +8,10 @@ import { useTheme } from "../hooks/useTheme";
 
 export default function PrivacyPage() {
   const { theme } = useTheme();
+
+  // Safety check for SSR/build time
+  if (!theme) return null;
+
   const components = getComponents(theme);
 
   const containerStyle = {

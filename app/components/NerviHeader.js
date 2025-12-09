@@ -3,6 +3,9 @@
 import { spacing, borderRadius, typography } from "../design-system";
 
 export function NerviHeader({ theme }) {
+  // Safety check for SSR/build time when theme might be undefined
+  if (!theme) return null;
+
   return (
     <>
       <div style={headerStyle(theme)} className="nervi-header">

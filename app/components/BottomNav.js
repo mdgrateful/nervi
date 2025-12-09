@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { spacing, borderRadius, typography, colors } from "../design-system";
+import { spacing, borderRadius, typography, colors, lightTheme } from "../design-system";
 
-export function BottomNav({ currentPage = "/", theme }) {
+export function BottomNav({ currentPage = "/", theme = lightTheme }) {
+  // Safety check for SSR/build time
+  if (!theme) return null;
+
   const [activeRipple, setActiveRipple] = useState(null);
 
   function go(path) {

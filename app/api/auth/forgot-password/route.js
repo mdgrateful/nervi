@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { rateLimiters } from "../../../../lib/rateLimit";
 import { logInfo, logError, logSecurityEvent } from "../../../../lib/logger";
 import { sanitizeInput, isValidEmail } from "../../../../lib/validation";
+import { sendPasswordResetEmail } from "../../../../lib/email";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,21 +92,29 @@ export async function POST(request) {
       );
     }
 
-    // TODO: Send email with reset link
-    // For now, we'll just return the token (in production, this should be emailed)
-    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
+    // Send password reset email
+    const emailResult = await sendPasswordResetEmail(user.email, resetToken);
 
-    logSecurityEvent("Password reset requested", { operation: "forgot_password" });
-    logInfo("Password reset token generated", { source: "forgot_password" });
+    if (!emailResult.success && !emailResult.skipped) {
+      logError("Failed to send password reset email", emailResult.error, {
+        operation: "forgot_password"
+      });
+      // Don't reveal email send failure to user (security best practice)
+      // Token is still valid in database, user can retry
+    }
+
+    logSecurityEvent("Password reset requested", {
+      operation: "forgot_password",
+      emailSent: emailResult.success || emailResult.skipped
+    });
+    logInfo("Password reset token generated", {
+      source: "forgot_password",
+      emailStatus: emailResult.skipped ? "skipped" : emailResult.success ? "sent" : "failed"
+    });
 
     return NextResponse.json({
       success: true,
       message: "If this email is registered, you will receive a password reset link.",
-      // REMOVE THIS IN PRODUCTION - only for development
-      devOnly: {
-        resetUrl,
-        token: resetToken,
-      }
     });
   } catch (error) {
     logError("Unexpected error in forgot password endpoint", error, { endpoint: "/api/auth/forgot-password" });

@@ -10,7 +10,7 @@ import {
   getComponents,
 } from "../design-system";
 import { useTheme } from "../hooks/useTheme";
-import { validatePassword, getPasswordStrengthLabel, getPasswordStrengthColor } from "../lib/passwordValidation";
+import { validatePassword, getPasswordStrengthLabel, getPasswordStrengthColor } from "../../lib/passwordValidation";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
