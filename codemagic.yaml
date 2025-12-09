@@ -1,0 +1,92 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.nervi.app
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      node: v18.20.0
+      xcode: 15.0
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+      - name: Install Capacitor CLI
+        script: |
+          npm install -g @capacitor/cli
+      - name: Build Next.js
+        script: |
+          npm run build
+      - name: Sync Capacitor
+        script: |
+          npx cap sync ios
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Build iOS app
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+
+  android-workflow:
+    name: Android Build
+    max_build_duration: 60
+    environment:
+      android_signing:
+        - nervi_keystore
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.nervi.app"
+      node: v18.20.0
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+      - name: Install Capacitor CLI
+        script: |
+          npm install -g @capacitor/cli
+      - name: Build Next.js
+        script: |
+          npm run build
+      - name: Sync Capacitor
+        script: |
+          npx cap sync android
+      - name: Build Android app
+        script: |
+          cd android
+          ./gradlew assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
