@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Providers } from "./components/Providers";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { DisclaimerProvider } from "./components/DisclaimerProvider";
 import "./globals.css";
 
 export const metadata = {
@@ -33,7 +34,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <DisclaimerProvider>
+            {children}
+          </DisclaimerProvider>
+        </Providers>
         <CookieConsentBanner />
       </body>
     </html>
