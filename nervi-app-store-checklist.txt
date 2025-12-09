@@ -1,0 +1,231 @@
+
+Nervi – App Store Connect & Listing Checklist
+============================================
+
+Audience: Claude (coding assistant) and Brandon. This file captures the practical setup steps and copy needed to get Nervi into the Apple App Store, including compliance notes (DSA “trader” status), subscriptions, and in-app disclaimers.
+
+----------------------------------------
+1. App Store Connect – Account Setup
+----------------------------------------
+
+Goal: Make sure the Apple Developer / App Store Connect account is fully ready to accept an app and paid subscriptions.
+
+Steps:
+
+1. Agreements, Tax, and Banking
+   - In App Store Connect, go to “Agreements, Tax, and Banking”.
+   - Accept the Paid Apps agreement.
+   - Add banking details for payouts (wire transfer).
+   - Fill out required tax forms (e.g., W-9 or W-8BEN).
+   - Once the app is live and there are sales, apply for the **App Store Small Business Program** (ASBP):
+     - Requirements: total proceeds for all associated developer accounts ≤ $1M in the previous calendar year.
+     - Benefit: reduces Apple’s commission from 30% to 15% on app sales and in-app purchases in eligible regions.
+
+2. Users and Access
+   - Ensure the primary Apple ID has “Admin” or equivalent role.
+   - Optionally add additional users (dev, finance) as needed.
+
+3. Digital Services Act (EU “Trader” Status)
+   - Because Nervi is a commercial subscription app, **it should be treated as a “trader”** under the EU Digital Services Act.
+   - In App Store Connect → the DSA/Compliance section:
+     - Answer “Yes” to “Are you a trader?”
+     - Provide:
+       - Legal name (Brandon or business entity name)
+       - Business or mailing address
+       - Contact/support email (e.g., support@nervi.app)
+       - Website (Nervi landing page)
+   - Apple will verify and display trader contact information for EU users.
+
+----------------------------------------
+2. Create the Nervi App Record
+----------------------------------------
+
+In App Store Connect → My Apps → “+” → New App:
+
+Fields to set:
+
+1. Basic Info
+   - Name: `Nervi`
+   - Primary Language: `English (U.S.)` (adjust later if needed).
+   - Bundle ID: must match the iOS bundle ID from the Xcode/Capacitor project (e.g. `com.yourcompany.nervi`).
+   - SKU: internal identifier, e.g. `nervi-001`.
+   - Platform: `iOS`.
+   - Category:
+     - Primary = `Health & Fitness`
+     - Secondary = `Lifestyle` (optional).
+
+2. App Information
+   - Subtitle (max 30 chars): use one of:
+     - `Nervous system companion` (recommended)
+     - or `Trauma-aware AI support`
+   - Privacy Policy URL: `https://<nervi-domain>/privacy`
+   - Support URL: `https://<nervi-domain>/support` or `https://<nervi-domain>/contact`
+   - Marketing URL: `https://<nervi-domain>` (main landing page).
+
+3. Age Rating
+   - Use Apple’s rating tool honestly.
+   - Because Nervi deals with trauma, mental health, and emotional content, expect a rating around **17+**.
+   - Ensure rating is consistent with Nervi content and disclaimers.
+
+4. Content Rights
+   - Confirm that Brandon / Nervi has rights to all app content.
+   - No third-party IP that isn’t licensed.
+
+5. Pricing and Availability
+   - Price: `Free` (app download is free; subscription is via IAP).
+   - Availability: likely “All countries or regions” to start, unless you want to restrict.
+
+----------------------------------------
+3. App Privacy “Nutrition Label”
+----------------------------------------
+
+Under App Privacy in App Store Connect:
+
+1. Data Collection
+   Nervi collects (at minimum):
+   - Contact Info: email, possibly name.
+   - Identifiers: user ID, device-level identifiers (as used by NextAuth/Supabase, etc.).
+   - Usage Data: interactions with the app (e.g., which features used).
+   - Sensitive / Health & Fitness Data: emotional states, mental health–related content.
+
+2. Linking & Tracking
+   - Mark that data is **linked to the user** (it’s account-based).
+   - Indicate that data is **not used for tracking for ads** (assuming no ad SDKs).
+
+3. Align with Privacy Policy
+   - Ensure the privacy policy already written for Nervi (GDPR/CCPA ready) matches what is declared in the App Store privacy section.
+
+----------------------------------------
+4. In-App Purchases & Subscriptions
+----------------------------------------
+
+Nervi is a subscription-based service. Requirements:
+
+1. IAP Subscriptions
+   - In App Store Connect → Features → In-App Purchases:
+     - Create a Subscription Group: e.g. `Nervi Access`.
+     - Create one or more **auto-renewable subscriptions**:
+       - `Nervi Monthly`
+       - `Nervi Yearly` (optional, for discounted long-term).
+     - Set price tiers to match or roughly match existing Stripe pricing (e.g. $4.99/month and $14.99/month; adjust for Apple’s tier system).
+
+2. Rules
+   - All subscription purchases **inside the iOS app** must use In-App Purchase.
+   - Stripe remains for **web sign-ups**; those users simply log into the app with their paid account.
+   - Do **not** include “go to our website to buy cheaper” links inside the iOS app, as this violates Apple guidelines (except narrow “reader app” carve-outs which Nervi is unlikely to qualify for).
+
+3. Subscription Details
+   - Clearly disclose (in app and IAP metadata):
+     - Title of subscription
+     - Duration (monthly, yearly, etc.)
+     - Price (and per-unit price where appropriate)
+   - Provide links inside the app to:
+     - Privacy Policy
+     - Terms of Use
+
+----------------------------------------
+5. In-App Disclaimer Text for Nervi
+----------------------------------------
+
+This should appear:
+
+- On first launch / onboarding (e.g., a modal or onboarding step).
+- In a persistent way in Settings → About or similar.
+- Optionally as small text near the chat screen.
+
+Recommended wording (or very close to this):
+
+> **Important:** Nervi is an AI nervous system companion, not a doctor or therapist.  
+> - Nervi does **not** provide medical care, diagnosis, or psychotherapy.  
+> - Nervi does **not** replace professional mental health treatment.  
+>  
+> If you are in crisis, thinking about harming yourself or others, or in immediate danger, **do not use Nervi for help.** Call your local emergency number (such as 911 in the U.S.), go to the nearest emergency room, or contact a crisis hotline in your area.
+>
+> By using Nervi, you agree to our [Terms of Use] and [Privacy Policy].
+
+- `[Terms of Use]` and `[Privacy Policy]` should be tappable links to the Nervi website pages.
+
+----------------------------------------
+6. App Store Listing Copy for Nervi
+----------------------------------------
+
+This is the main **Description** field in App Store Connect. Claude can adapt/massage this as needed.
+
+Suggested description:
+
+> Nervi is a trauma-aware, nervous-system-focused AI companion designed to help you feel less overwhelmed and more grounded in daily life.  
+>  
+> Instead of generic self-help tips, Nervi listens to your story, maps your patterns, and builds a gentle 2-week nervous system plan just for you.  
+>  
+> ### What Nervi can help with  
+> - Feeling anxious, wired, or “stuck on”  
+> - Collapse, numbness, or “shut down” states  
+> - Overwhelm from stress, work, parenting, or relationships  
+> - Old patterns that keep repeating, even when you “know better”  
+>  
+> ### How Nervi works  
+> **1. Talk to Nervi like you would a nervous system coach**  
+> Share how your days feel, what sets you off, and what drains you. Nervi pays attention to your states, triggers, and body signals over time.  
+>  
+> **2. Get a personalized 2-week plan**  
+> Based on your check-ins, notes, and life story, Nervi creates a 14-day plan of small, doable practices. Each item includes:  
+> - A simple action (e.g., 3-minute grounding while coffee brews)  
+> - The time of day that fits your actual life  
+> - A short “why” that explains how this helps *your* nervous system  
+>  
+> **3. Let Nervi remember for you**  
+> Nervi sends gentle reminders at the times you choose, so you don’t have to write anything down or remember what to do. Your job is just to notice: “Do I want to try this right now, or not?”  
+>  
+> **4. Watch your patterns with compassion**  
+> Nervi helps you see patterns in:  
+> - When your system spikes  
+> - What tends to calm you  
+> - How your body says “I’m not okay”  
+>  
+> Over time, Nervi’s suggestions and summaries can help you, and your therapist if you have one, understand what your system is trying to do to protect you.  
+>  
+> ### Key features  
+> - Nervous system–aware AI conversations (fight/flight/freeze/fawn language)  
+> - Dual voice modes: a more feminine, nurturing tone, or a masculine, structured tone  
+> - Life Story chapters to map key events and themes  
+> - Notes linked to conversations, so insights don’t get lost  
+> - A visible 2-week practice schedule with clear reasons for each practice  
+> - Push notifications so your plan lives in your pocket  
+> - Account deletion and data export controls  
+>  
+> ### For people already in therapy  
+> Nervi is designed to sit *between* therapy sessions, not replace them. You can bring your Nervi summaries and patterns into sessions, or share themes you’re working on.  
+>  
+> ### Safety & limits  
+> Nervi is an AI companion, not a doctor or therapist.  
+> - Nervi does not provide medical care, diagnosis, or emergency support.  
+> - Nervi is not a crisis service and cannot keep you safe in emergencies.  
+>  
+> If you are in immediate danger, thinking about harming yourself or others, or in crisis, please contact local emergency services, a crisis hotline, or a qualified mental health professional.  
+>  
+> By using Nervi, you agree to our Terms of Use and Privacy Policy.
+
+Keywords (not visible to users, but used for search), for the “Keywords” field:
+- `nervous system, trauma, anxiety, somatic, grounding, nervous system regulation, mental health, burnout, ptsd support, stress`
+
+Claude can trim for length as needed.
+
+----------------------------------------
+7. Build & Submission Outline
+----------------------------------------
+
+Once the Apple Developer membership is active and the app record is configured:
+
+1. Use Capacitor/Xcode to build an iOS app that loads the existing Nervi web app (via Capacitor `server.url`).
+2. In Xcode:
+   - Set bundle ID, display name (“Nervi”), icons, and signing team.
+   - Run on a physical iPhone or simulator to confirm it launches and behaves like an app.
+3. Archive and upload build to App Store Connect.
+4. Attach build to the Nervi app record; add screenshots.
+5. Provide demo/test account credentials for review team in the “App Review Information” section.
+6. Submit for review.
+
+This document gives enough structure for Claude to:
+- ensure App Store Connect configuration matches Nervi’s product,
+- integrate necessary disclaimers and links into the app UI,
+- and help prepare the IAP subscription configuration and listing text.

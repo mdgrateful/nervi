@@ -9,7 +9,8 @@ workflows:
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
-      node: v18.20.0
+      node: v20.18.0
+      xcode: 15.4
     scripts:
       - name: Install dependencies
         script: |
@@ -57,7 +58,7 @@ workflows:
         - google_play
       vars:
         PACKAGE_NAME: "com.nervi.app"
-      node: v18.20.0
+      node: v20.18.0
     scripts:
       - name: Install dependencies
         script: |
