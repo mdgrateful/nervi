@@ -64,7 +64,7 @@ export function NerviHeader({ theme }) {
 
           <div style={brandingStyle}>
             <h1 style={logoTextStyle(theme)}>Nervi</h1>
-            <p style={taglineStyle(theme)}>Your Nervous System Guide</p>
+            <p style={taglineStyle(theme)}>Your Nervous System Companion</p>
           </div>
         </div>
 

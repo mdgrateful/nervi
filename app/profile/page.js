@@ -82,12 +82,18 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState("free");
   const [subscriptionTier, setSubscriptionTier] = useState("free");
   const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [avatarColor, setAvatarColor] = useState("#6366F1"); // Default avatar background color
+  const [hasLifetimeAccess, setHasLifetimeAccess] = useState(false);
+  const [promoCodeUsed, setPromoCodeUsed] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [applyingPromoCode, setApplyingPromoCode] = useState(false);
+  const [promoCodeStatus, setPromoCodeStatus] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -124,6 +130,8 @@ export default function ProfilePage() {
         setSubscriptionStatus(data.profile.subscription_status || "free");
         setSubscriptionTier(data.profile.subscription_tier || "free");
         setSubscriptionEndDate(data.profile.subscription_current_period_end || null);
+        setHasLifetimeAccess(data.profile.has_lifetime_access || false);
+        setPromoCodeUsed(data.profile.promo_code_used || "");
       }
 
       setStatus("");
@@ -246,6 +254,55 @@ export default function ProfilePage() {
   function goToEditProfile() {
     if (typeof window !== "undefined") {
       window.location.href = "/edit-profile";
+    }
+  }
+
+  async function handleExportData() {
+    if (!userId) {
+      alert("User ID not found. Please log in again.");
+      return;
+    }
+
+    setExporting(true);
+    setStatus("Preparing your data export...");
+
+    try {
+      const res = await fetch("/api/export-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(`Error: ${data.error || "Failed to export data"}`);
+        setExporting(false);
+        setStatus("");
+        return;
+      }
+
+      // Get the blob from the response
+      const blob = await res.blob();
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nervi-data-${userId}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setStatus("Data exported successfully!");
+      setTimeout(() => setStatus(""), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while exporting your data.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -387,6 +444,54 @@ export default function ProfilePage() {
     } catch (err) {
       console.error(err);
       setStatus("Error: " + err.message);
+    }
+  }
+
+  async function handleApplyPromoCode() {
+    if (!userId.trim()) {
+      alert("Please log in first");
+      return;
+    }
+
+    if (!promoCode.trim()) {
+      setPromoCodeStatus("Please enter a promo code");
+      return;
+    }
+
+    setApplyingPromoCode(true);
+    setPromoCodeStatus("Applying promo code...");
+
+    try {
+      const res = await fetch("/api/apply-promo-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId.trim(),
+          promoCode: promoCode.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to apply promo code");
+      }
+
+      // Success - reload profile to show updated access
+      setPromoCodeStatus(data.message || "Promo code applied successfully!");
+      setPromoCode("");
+
+      // Reload profile after 1 second
+      setTimeout(() => {
+        loadProfile(userId);
+        setPromoCodeStatus("");
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      setPromoCodeStatus("Error: " + err.message);
+      setTimeout(() => setPromoCodeStatus(""), 5000);
+    } finally {
+      setApplyingPromoCode(false);
     }
   }
 
@@ -702,7 +807,39 @@ export default function ProfilePage() {
                 {subscriptionTier === 'free' ? 'Free Tier' : `${subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)} Plan`}
               </span>
             </div>
-            {subscriptionStatus !== 'free' && subscriptionStatus !== 'canceled' && (
+            {hasLifetimeAccess && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: spacing.xs }}>
+                <span style={{ fontSize: typography.fontSizes.sm, color: theme.textSecondary }}>
+                  Access Type
+                </span>
+                <span
+                  style={{
+                    fontSize: typography.fontSizes.sm,
+                    fontWeight: typography.fontWeights.semibold,
+                    color: colors.success,
+                  }}
+                >
+                  Lifetime Access
+                </span>
+              </div>
+            )}
+            {promoCodeUsed && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: spacing.xs }}>
+                <span style={{ fontSize: typography.fontSizes.sm, color: theme.textSecondary }}>
+                  Promo Code
+                </span>
+                <span
+                  style={{
+                    fontSize: typography.fontSizes.sm,
+                    color: theme.textPrimary,
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {promoCodeUsed}
+                </span>
+              </div>
+            )}
+            {subscriptionStatus !== 'free' && subscriptionStatus !== 'canceled' && !hasLifetimeAccess && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: typography.fontSizes.sm, color: theme.textSecondary }}>
                   Status
@@ -718,7 +855,7 @@ export default function ProfilePage() {
                 </span>
               </div>
             )}
-            {subscriptionEndDate && (
+            {subscriptionEndDate && !hasLifetimeAccess && (
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: spacing.xs }}>
                 <span style={{ fontSize: typography.fontSizes.sm, color: theme.textSecondary }}>
                   Renews
@@ -857,11 +994,75 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
+
+              {/* Promo Code Section */}
+              <div
+                style={{
+                  marginTop: spacing.lg,
+                  paddingTop: spacing.lg,
+                  borderTop: `1px solid ${theme.border}`,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: typography.fontSizes.sm,
+                    color: theme.textSecondary,
+                    marginBottom: spacing.md,
+                    textAlign: "center",
+                  }}
+                >
+                  Or use a promo code for instant access
+                </p>
+                <div style={{ display: "flex", gap: spacing.sm }}>
+                  <input
+                    type="text"
+                    placeholder="Enter promo code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    disabled={applyingPromoCode}
+                    style={{
+                      flex: 1,
+                      padding: spacing.sm,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: borderRadius.md,
+                      background: theme.background,
+                      color: theme.textPrimary,
+                      fontSize: typography.fontSizes.sm,
+                      outline: "none",
+                      textTransform: "uppercase",
+                    }}
+                  />
+                  <button
+                    onClick={handleApplyPromoCode}
+                    disabled={applyingPromoCode || !promoCode.trim()}
+                    style={{
+                      ...components.button,
+                      ...components.buttonPrimary,
+                      cursor: (applyingPromoCode || !promoCode.trim()) ? "not-allowed" : "pointer",
+                      opacity: (applyingPromoCode || !promoCode.trim()) ? 0.6 : 1,
+                    }}
+                  >
+                    {applyingPromoCode ? "Applying..." : "Apply"}
+                  </button>
+                </div>
+                {promoCodeStatus && (
+                  <div
+                    style={{
+                      fontSize: typography.fontSizes.xs,
+                      color: promoCodeStatus.includes("Error") ? colors.error : colors.success,
+                      textAlign: "center",
+                      marginTop: spacing.sm,
+                    }}
+                  >
+                    {promoCodeStatus}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
           {/* Show manage button if subscribed */}
-          {subscriptionTier !== 'free' && subscriptionStatus !== 'free' && (
+          {subscriptionTier !== 'free' && subscriptionStatus !== 'free' && !hasLifetimeAccess && (
             <button
               onClick={handleManageSubscription}
               style={{
@@ -931,6 +1132,50 @@ export default function ProfilePage() {
             }}
           >
             View History
+          </button>
+        </div>
+
+        {/* Data & Privacy Section */}
+        <div
+          style={{
+            marginTop: spacing.xl,
+            padding: spacing.lg,
+            background: theme.surface,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${theme.border}`,
+          }}
+        >
+          <h3
+            style={{
+              fontSize: typography.fontSizes.md,
+              fontWeight: typography.fontWeights.semibold,
+              color: theme.textPrimary,
+              marginBottom: spacing.sm,
+            }}
+          >
+            Data & Privacy
+          </h3>
+          <p
+            style={{
+              fontSize: typography.fontSizes.sm,
+              color: theme.textSecondary,
+              marginBottom: spacing.md,
+            }}
+          >
+            Download a copy of all your data stored in Nervi. This includes your profile, conversations, notes, and more.
+          </p>
+          <button
+            onClick={handleExportData}
+            disabled={exporting}
+            style={{
+              ...components.button,
+              ...components.buttonPrimary,
+              width: "100%",
+              cursor: exporting ? "not-allowed" : "pointer",
+              opacity: exporting ? 0.6 : 1,
+            }}
+          >
+            {exporting ? "Preparing Export..." : "Download My Data (JSON)"}
           </button>
         </div>
 

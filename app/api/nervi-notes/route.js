@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { detectTriggers, detectBuffers } from "../../utils/patternLearning";
+import { logError, logInfo } from "../../../lib/logger";
+import { sanitizeInput, sanitizeTextContent, isValidUUID } from "../../../lib/validation";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,11 +17,21 @@ const supabase =
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const rawUserId = searchParams.get("userId");
 
-    if (!userId) {
+    if (!rawUserId) {
       return NextResponse.json(
         { error: "Missing userId" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize and validate userId
+    const userId = sanitizeInput(rawUserId, 100);
+
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      return NextResponse.json(
+        { error: "Invalid userId format" },
         { status: 400 }
       );
     }
@@ -39,7 +51,7 @@ export async function GET(request) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error loading notes:", error);
+      logError("Error loading notes", error, { operation: "get_notes" });
       return NextResponse.json(
         { error: "Error loading notes" },
         { status: 500 }
@@ -54,7 +66,7 @@ export async function GET(request) {
       patterns,
     });
   } catch (err) {
-    console.error("Unexpected error in /api/nervi-notes GET:", err);
+    logError("Unexpected error in nervi-notes GET endpoint", err, { endpoint: "/api/nervi-notes GET" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }
@@ -65,11 +77,21 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, activity, feeling, location, action } = body || {};
+    const { userId: rawUserId, activity: rawActivity, feeling: rawFeeling, location: rawLocation, action, noteId } = body || {};
 
-    if (!userId) {
+    if (!rawUserId) {
       return NextResponse.json(
         { error: "Missing userId" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize and validate userId
+    const userId = sanitizeInput(rawUserId, 100);
+
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      return NextResponse.json(
+        { error: "Invalid userId format" },
         { status: 400 }
       );
     }
@@ -82,15 +104,17 @@ export async function POST(request) {
     }
 
     // Handle delete action
-    if (action === "delete" && body.noteId) {
+    if (action === "delete" && noteId) {
+      const sanitizedNoteId = sanitizeInput(noteId, 100);
+
       const { error: deleteError } = await supabase
         .from("nervi_notes")
         .delete()
-        .eq("id", body.noteId)
+        .eq("id", sanitizedNoteId)
         .eq("user_id", userId);
 
       if (deleteError) {
-        console.error("Error deleting note:", deleteError);
+        logError("Error deleting note", deleteError, { operation: "delete_note" });
         return NextResponse.json(
           { error: "Error deleting note" },
           { status: 500 }
@@ -99,6 +123,11 @@ export async function POST(request) {
 
       return NextResponse.json({ ok: true });
     }
+
+    // Sanitize text inputs (allow longer content for user notes)
+    const activity = rawActivity ? sanitizeTextContent(rawActivity, 500) : null;
+    const feeling = rawFeeling ? sanitizeTextContent(rawFeeling, 500) : null;
+    const location = rawLocation ? sanitizeTextContent(rawLocation, 200) : null;
 
     // Save new note
     if (!activity && !feeling && !location) {
@@ -123,7 +152,7 @@ export async function POST(request) {
       ]);
 
     if (insertError) {
-      console.error("Error creating note:", insertError);
+      logError("Error creating note", insertError, { operation: "create_note" });
       return NextResponse.json(
         { error: "Error creating note" },
         { status: 500 }
@@ -203,13 +232,13 @@ export async function POST(request) {
           });
       }
     } catch (learnError) {
-      console.error("Error auto-learning patterns:", learnError);
+      logError("Error auto-learning patterns", learnError, { operation: "pattern_learning" });
       // Don't fail the request if learning fails
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("Unexpected error in /api/nervi-notes POST:", err);
+    logError("Unexpected error in nervi-notes POST endpoint", err, { endpoint: "/api/nervi-notes POST" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "../../../lib/stripe";
 import { headers } from "next/headers";
+import { logInfo, logError } from "../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,7 +38,7 @@ export async function POST(request) {
     const signature = headers().get("stripe-signature");
 
     if (!signature) {
-      console.error("[STRIPE WEBHOOK] No signature found");
+      logError("Stripe webhook missing signature", new Error("No signature"), { operation: "stripe_webhook" });
       return NextResponse.json(
         { error: "No signature" },
         { status: 400 }
@@ -53,20 +54,20 @@ export async function POST(request) {
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.error("[STRIPE WEBHOOK] Signature verification failed:", err.message);
+      logError("Stripe webhook signature verification failed", err, { operation: "stripe_webhook" });
       return NextResponse.json(
         { error: `Webhook signature verification failed: ${err.message}` },
         { status: 400 }
       );
     }
 
-    console.log(`[STRIPE WEBHOOK] Received event: ${event.type}`);
+    logInfo("Stripe webhook event received", { operation: "stripe_webhook", eventType: event.type });
 
     // Handle different event types
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        console.log(`[STRIPE WEBHOOK] Checkout completed for customer: ${session.customer}`);
+        logInfo("Stripe checkout session completed", { operation: "stripe_webhook" });
 
         // Get subscription details
         if (session.subscription) {
@@ -88,7 +89,7 @@ export async function POST(request) {
         const userId = subscription.metadata?.userId;
 
         if (userId) {
-          console.log(`[STRIPE WEBHOOK] Subscription deleted for user: ${userId}`);
+          logInfo("Stripe subscription deleted", { operation: "stripe_webhook" });
 
           await supabase
             .from("users")
@@ -118,7 +119,7 @@ export async function POST(request) {
         const invoice = event.data.object;
         const customerId = invoice.customer;
 
-        console.log(`[STRIPE WEBHOOK] Payment failed for customer: ${customerId}`);
+        logInfo("Stripe payment failed", { operation: "stripe_webhook" });
 
         // Find user by customer ID and update status
         const { data: user } = await supabase
@@ -137,12 +138,12 @@ export async function POST(request) {
       }
 
       default:
-        console.log(`[STRIPE WEBHOOK] Unhandled event type: ${event.type}`);
+        logInfo("Stripe webhook unhandled event type", { operation: "stripe_webhook", eventType: event.type });
     }
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[STRIPE WEBHOOK] Unexpected error:", err);
+    logError("Unexpected error in stripe webhook", err, { endpoint: "/api/stripe-webhook" });
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }
@@ -157,7 +158,7 @@ async function updateSubscriptionInDatabase(subscription) {
     const tier = subscription.metadata?.tier || 'basic';
 
     if (!userId) {
-      console.error("[STRIPE WEBHOOK] No userId in subscription metadata");
+      logError("Stripe subscription missing userId in metadata", new Error("No userId"), { operation: "stripe_webhook" });
       return;
     }
 
@@ -168,7 +169,7 @@ async function updateSubscriptionInDatabase(subscription) {
       subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     };
 
-    console.log(`[STRIPE WEBHOOK] Updating subscription for user ${userId}:`, updateData);
+    logInfo("Updating Stripe subscription in database", { operation: "stripe_webhook" });
 
     const { error } = await supabase
       .from("users")
@@ -176,11 +177,11 @@ async function updateSubscriptionInDatabase(subscription) {
       .eq("user_id", userId);
 
     if (error) {
-      console.error("[STRIPE WEBHOOK] Error updating user subscription:", error);
+      logError("Failed to update subscription in database", error, { operation: "stripe_webhook" });
     } else {
-      console.log(`[STRIPE WEBHOOK] Successfully updated subscription for user: ${userId}`);
+      logInfo("Successfully updated subscription in database", { operation: "stripe_webhook" });
     }
   } catch (err) {
-    console.error("[STRIPE WEBHOOK] Error in updateSubscriptionInDatabase:", err);
+    logError("Error in updateSubscriptionInDatabase helper", err, { operation: "stripe_webhook" });
   }
 }

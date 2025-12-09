@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logError } from "../../../../lib/logger";
+import { sanitizeInput, isValidUUID, isValidURL } from "../../../../lib/validation";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,15 +23,34 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { userId, subscription } = body || {};
+    const { userId: rawUserId, subscription } = body || {};
 
-    if (!userId || !subscription || !subscription.endpoint) {
+    if (!rawUserId || !subscription || !subscription.endpoint) {
       return NextResponse.json(
         { error: "Missing userId or subscription" },
         { status: 400 }
       );
     }
 
+    // Sanitize and validate userId
+    const userId = sanitizeInput(rawUserId, 100);
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      return NextResponse.json(
+        { error: "Invalid userId format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate subscription endpoint URL
+    const endpoint = sanitizeInput(subscription.endpoint, 500);
+    if (!isValidURL(endpoint)) {
+      return NextResponse.json(
+        { error: "Invalid subscription endpoint" },
+        { status: 400 }
+      );
+    }
+
+    // Validate subscription keys
     const p256dh = subscription.keys?.p256dh;
     const auth = subscription.keys?.auth;
 
@@ -40,15 +61,19 @@ export async function POST(request) {
       );
     }
 
+    // Sanitize keys (base64 strings)
+    const sanitizedP256dh = sanitizeInput(p256dh, 200);
+    const sanitizedAuth = sanitizeInput(auth, 200);
+
     const { error } = await supabase.from("nervi_push_subscriptions").insert({
       user_id: userId,
-      endpoint: subscription.endpoint,
-      p256dh,
-      auth,
+      endpoint: endpoint,
+      p256dh: sanitizedP256dh,
+      auth: sanitizedAuth,
     });
 
     if (error) {
-      console.error("Error saving push subscription:", error);
+      logError("Error saving push subscription", error, { operation: "push_subscribe" });
       return NextResponse.json(
         { error: "Error saving push subscription" },
         { status: 500 }
@@ -57,7 +82,7 @@ export async function POST(request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("Unexpected error in /api/push/subscribe:", err);
+    logError("Unexpected error in push subscribe endpoint", err, { endpoint: "/api/push/subscribe" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

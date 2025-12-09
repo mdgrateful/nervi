@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { signIn } from "next-auth/react";
 import {
   spacing,
@@ -10,6 +10,7 @@ import {
   getComponents,
 } from "../design-system";
 import { useTheme } from "../hooks/useTheme";
+import { validatePassword, getPasswordStrengthLabel, getPasswordStrengthColor } from "../lib/passwordValidation";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
@@ -48,6 +49,15 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+
+  // Calculate password strength in real-time
+  const passwordStrength = useMemo(() => {
+    if (!password) return null;
+    return validatePassword(password);
+  }, [password]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -61,8 +71,10 @@ export default function SignupPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors[0]);
       setLoading(false);
       return;
     }
@@ -92,6 +104,7 @@ export default function SignupPage() {
           workEndTime,
           allowWorkNotifications,
           profilePictureUrl: pictureUrl,
+          promoCode: promoCode.trim() || undefined,
         }),
       });
 
@@ -280,10 +293,9 @@ export default function SignupPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder="Min 12 characters with uppercase, lowercase, number, special char"
                 style={{ ...inputStyle, paddingRight: "40px" }}
                 required
-                minLength={8}
               />
               <button
                 type="button"
@@ -307,6 +319,53 @@ export default function SignupPage() {
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
+
+            {/* Password Strength Indicator */}
+            {password && passwordStrength && (
+              <div style={{ marginTop: spacing.sm }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                  <span style={{ fontSize: typography.fontSizes.xs, color: theme.textMuted }}>
+                    Strength: {getPasswordStrengthLabel(passwordStrength.strength)}
+                  </span>
+                  <span style={{ fontSize: typography.fontSizes.xs, color: getPasswordStrengthColor(passwordStrength.strength) }}>
+                    {passwordStrength.strength}%
+                  </span>
+                </div>
+                <div style={{
+                  width: "100%",
+                  height: "4px",
+                  background: theme.border,
+                  borderRadius: borderRadius.sm,
+                  overflow: "hidden"
+                }}>
+                  <div style={{
+                    width: `${passwordStrength.strength}%`,
+                    height: "100%",
+                    background: getPasswordStrengthColor(passwordStrength.strength),
+                    transition: "all 0.3s ease"
+                  }} />
+                </div>
+
+                {/* Password Requirements */}
+                {passwordStrength.errors.length > 0 && (
+                  <div style={{ marginTop: spacing.sm }}>
+                    <ul style={{
+                      margin: 0,
+                      padding: `0 0 0 ${spacing.md}`,
+                      fontSize: typography.fontSizes.xs,
+                      color: theme.textMuted,
+                      listStyle: "disc"
+                    }}>
+                      {passwordStrength.errors.map((error, index) => (
+                        <li key={index} style={{ marginBottom: spacing.xs }}>
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Confirm Password */}
@@ -419,6 +478,129 @@ export default function SignupPage() {
             </label>
           </div>
 
+          {/* Promo Code */}
+          <div
+            style={{
+              padding: spacing.md,
+              background: theme.surface,
+              borderRadius: borderRadius.lg,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: typography.fontSizes.sm,
+                fontWeight: typography.fontWeights.semibold,
+                color: theme.textPrimary,
+                marginBottom: spacing.sm,
+              }}
+            >
+              Promo Code (optional)
+            </h3>
+            <p
+              style={{
+                fontSize: typography.fontSizes.xs,
+                color: theme.textSecondary,
+                marginBottom: spacing.md,
+              }}
+            >
+              Have a promo code? Enter it here for instant access to premium features.
+            </p>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              placeholder="Enter promo code"
+              style={{
+                ...inputStyle,
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+              }}
+            />
+          </div>
+
+          {/* Consent Checkboxes */}
+          <div
+            style={{
+              padding: spacing.md,
+              background: theme.surface,
+              borderRadius: borderRadius.lg,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: typography.fontSizes.sm,
+                fontWeight: typography.fontWeights.semibold,
+                color: theme.textPrimary,
+                marginBottom: spacing.md,
+              }}
+            >
+              Legal Agreements *
+            </h3>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: spacing.sm,
+                cursor: "pointer",
+                fontSize: typography.fontSizes.xs,
+                color: theme.textSecondary,
+                marginBottom: spacing.sm,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                style={{ cursor: "pointer", marginTop: "2px" }}
+                required
+              />
+              <span>
+                I agree to the{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: theme.accent, textDecoration: "underline" }}
+                >
+                  Terms of Service
+                </a>
+              </span>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: spacing.sm,
+                cursor: "pointer",
+                fontSize: typography.fontSizes.xs,
+                color: theme.textSecondary,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={agreedToPrivacy}
+                onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                style={{ cursor: "pointer", marginTop: "2px" }}
+                required
+              />
+              <span>
+                I agree to the{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: theme.accent, textDecoration: "underline" }}
+                >
+                  Privacy Policy
+                </a>
+              </span>
+            </label>
+          </div>
+
           {error && (
             <div
               style={{
@@ -437,12 +619,14 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !agreedToTerms || !agreedToPrivacy}
             style={{
               ...components.button,
               ...components.buttonPrimary,
               padding: spacing.md,
               fontSize: typography.fontSizes.md,
+              opacity: (loading || !agreedToTerms || !agreedToPrivacy) ? 0.5 : 1,
+              cursor: (loading || !agreedToTerms || !agreedToPrivacy) ? "not-allowed" : "pointer",
             }}
           >
             {loading ? "Creating Account..." : "Create Account"}

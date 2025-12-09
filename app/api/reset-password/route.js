@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { logInfo, logError } from "../../../lib/logger";
+import { validatePassword } from "../../../lib/passwordValidation";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -24,9 +26,11 @@ export async function POST(request) {
       );
     }
 
-    if (password.length < 8) {
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
       return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
+        { error: passwordValidation.errors[0] },
         { status: 400 }
       );
     }
@@ -77,21 +81,21 @@ export async function POST(request) {
       .eq("id", user.id);
 
     if (updateError) {
-      console.error("[RESET PASSWORD] Error updating password:", updateError);
+      logError("Failed to update password during reset", updateError, { operation: "reset_password" });
       return NextResponse.json(
         { error: "Failed to reset password" },
         { status: 500 }
       );
     }
 
-    console.log("[RESET PASSWORD] Password reset successful for user:", user.user_id);
+    logInfo("Password reset successful", { operation: "reset_password" });
 
     return NextResponse.json({
       success: true,
       message: "Password has been reset successfully",
     });
   } catch (err) {
-    console.error("[RESET PASSWORD] Unexpected error:", err);
+    logError("Unexpected error in reset password endpoint", err, { endpoint: "/api/reset-password" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

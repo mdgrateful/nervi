@@ -266,12 +266,29 @@ export default function DashboardPage() {
         return;
       }
 
+      // Detect iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isInStandaloneMode = window.matchMedia("(display-mode: standalone)").matches ||
+                                 window.navigator.standalone === true;
+
+      // iOS-specific requirements (iOS 16.4+)
+      if (isIOS && !isInStandaloneMode) {
+        setNotificationError(
+          "On iPhone/iPad, add Nervi to your home screen first: tap Share → Add to Home Screen."
+        );
+        return;
+      }
+
       if (!("serviceWorker" in navigator)) {
         setNotificationError("Service workers are not supported in this browser.");
         return;
       }
       if (!("PushManager" in window)) {
-        setNotificationError("Push notifications are not supported in this browser.");
+        if (isIOS) {
+          setNotificationError("Push notifications require iOS 16.4 or later.");
+        } else {
+          setNotificationError("Push notifications are not supported in this browser.");
+        }
         return;
       }
 

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
+import { rateLimiters } from "../../../../lib/rateLimit";
+import { logInfo, logError, logSecurityEvent } from "../../../../lib/logger";
+import { sanitizeInput, isValidEmail } from "../../../../lib/validation";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,14 +16,31 @@ const supabase =
     : null;
 
 export async function POST(request) {
-  try {
-    const { email } = await request.json();
+  // Apply rate limiting: 3 password reset requests per hour per IP
+  const rateLimitResult = rateLimiters.passwordReset(request);
+  if (rateLimitResult) {
+    return rateLimitResult;
+  }
 
-    if (!email) {
+  try {
+    const { email: rawEmail } = await request.json();
+
+    if (!rawEmail) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
       );
+    }
+
+    // Sanitize and validate email
+    const email = sanitizeInput(rawEmail, 100).toLowerCase();
+
+    if (!isValidEmail(email)) {
+      // Don't reveal that the email format is invalid (security best practice)
+      return NextResponse.json({
+        success: true,
+        message: "If this email is registered, you will receive a password reset link.",
+      });
     }
 
     if (!supabase) {
@@ -64,7 +84,7 @@ export async function POST(request) {
       }]);
 
     if (tokenError) {
-      console.error("Error creating reset token:", tokenError);
+      logError("Error creating reset token", tokenError, { operation: "forgot_password" });
       return NextResponse.json(
         { error: "Failed to create reset token" },
         { status: 500 }
@@ -75,9 +95,8 @@ export async function POST(request) {
     // For now, we'll just return the token (in production, this should be emailed)
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
-    console.log(`Password reset requested for: ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log(`Token expires at: ${expiresAt.toISOString()}`);
+    logSecurityEvent("Password reset requested", { operation: "forgot_password" });
+    logInfo("Password reset token generated", { source: "forgot_password" });
 
     return NextResponse.json({
       success: true,
@@ -89,7 +108,7 @@ export async function POST(request) {
       }
     });
   } catch (error) {
-    console.error("Forgot password error:", error);
+    logError("Unexpected error in forgot password endpoint", error, { endpoint: "/api/auth/forgot-password" });
     return NextResponse.json(
       { error: "An error occurred" },
       { status: 500 }

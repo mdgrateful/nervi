@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logInfo, logError } from "../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,7 +68,7 @@ export async function POST(request) {
       .single();
 
     if (promoError || !promo) {
-      console.log("[PROMO CODE] Invalid code attempted:", normalizedCode);
+      logInfo("Invalid promo code attempt", { operation: "apply_promo_code" });
       return NextResponse.json(
         { error: "Invalid promo code" },
         { status: 400 }
@@ -103,14 +104,14 @@ export async function POST(request) {
       .eq("user_id", userId);
 
     if (updateError) {
-      console.error("[PROMO CODE] Error applying promo code:", updateError);
+      logError("Failed to apply promo code to user", updateError, { operation: "apply_promo_code" });
       return NextResponse.json(
         { error: "Failed to apply promo code" },
         { status: 500 }
       );
     }
 
-    console.log(`[PROMO CODE] Successfully applied code ${normalizedCode} to user ${userId}`);
+    logInfo("Promo code successfully applied", { operation: "apply_promo_code" });
 
     return NextResponse.json({
       success: true,
@@ -119,7 +120,7 @@ export async function POST(request) {
       hasLifetimeAccess: true,
     });
   } catch (err) {
-    console.error("[PROMO CODE] Unexpected error:", err);
+    logError("Unexpected error in apply promo code endpoint", err, { endpoint: "/api/apply-promo-code" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

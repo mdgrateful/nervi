@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "../../../lib/stripe";
+import { logInfo, logError } from "../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -65,13 +66,13 @@ export async function POST(request) {
       return_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/profile`,
     });
 
-    console.log(`[STRIPE] Created customer portal session for user: ${userId}`);
+    logInfo("Created customer portal session", { operation: "customer_portal" });
 
     return NextResponse.json({
       url: session.url,
     });
   } catch (err) {
-    console.error("[STRIPE] Error creating customer portal session:", err);
+    logError("Failed to create customer portal session", err, { operation: "customer_portal" });
     return NextResponse.json(
       { error: err.message || "Failed to create customer portal session" },
       { status: 500 }

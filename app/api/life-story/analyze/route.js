@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logInfo, logError } from "../../../../lib/logger";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -24,7 +25,7 @@ export async function POST(request) {
       .order("created_at", { ascending: true });
 
     if (memoriesError) {
-      console.error("Error fetching memories:", memoriesError);
+      logError("Failed to fetch memories for life story analysis", memoriesError, { operation: "life_story_analyze" });
       return NextResponse.json({ error: memoriesError.message }, { status: 500 });
     }
 
@@ -40,8 +41,7 @@ export async function POST(request) {
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n\n");
 
-    console.log(`[ANALYZE] Loaded ${memories.length} messages for user ${userId}`);
-    console.log(`[ANALYZE] Conversation length: ${conversationText.length} characters`);
+    logInfo("Loaded conversation history for life story analysis", { operation: "life_story_analyze", messageCount: memories.length });
 
     // Prepare existing life story context if provided
     let existingContext = '';
@@ -179,7 +179,7 @@ CRITICAL: Extract EVERYTHING. If they mention 20 different experiences, extract 
 
     if (!openAiRes.ok) {
       const errorText = await openAiRes.text();
-      console.error("OpenAI error:", errorText);
+      logError("OpenAI request failed for life story analysis", new Error(errorText), { operation: "life_story_analyze" });
       return NextResponse.json(
         { error: "OpenAI request failed" },
         { status: 500 }
@@ -189,7 +189,7 @@ CRITICAL: Extract EVERYTHING. If they mention 20 different experiences, extract 
     const data = await openAiRes.json();
     const responseText = data.choices[0].message.content.trim();
 
-    console.log(`[ANALYZE] AI Response length: ${responseText.length} characters`);
+    logInfo("Received AI response for life story analysis", { operation: "life_story_analyze" });
 
     // Parse AI response
     let analysisResult;
@@ -198,9 +198,14 @@ CRITICAL: Extract EVERYTHING. If they mention 20 different experiences, extract 
       const jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       analysisResult = JSON.parse(jsonText);
 
-      console.log(`[ANALYZE] Extracted: ${analysisResult.chapters?.length || 0} chapters, ${analysisResult.events?.length || 0} events, ${analysisResult.threads?.length || 0} threads`);
+      logInfo("Successfully extracted life story data", {
+        operation: "life_story_analyze",
+        chapters: analysisResult.chapters?.length || 0,
+        events: analysisResult.events?.length || 0,
+        threads: analysisResult.threads?.length || 0
+      });
     } catch (parseError) {
-      console.error("[ANALYZE] Failed to parse AI response:", responseText);
+      logError("Failed to parse AI response for life story analysis", parseError, { operation: "life_story_analyze" });
       return NextResponse.json({
         error: "Failed to parse AI analysis",
         rawResponse: responseText,
@@ -214,7 +219,7 @@ CRITICAL: Extract EVERYTHING. If they mention 20 different experiences, extract 
       conversationCount: memories.length,
     });
   } catch (error) {
-    console.error("POST /api/life-story/analyze error:", error);
+    logError("Unexpected error in life story analyze endpoint", error, { endpoint: "/api/life-story/analyze" });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

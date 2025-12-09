@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { Providers } from "./components/Providers";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./globals.css";
 
 export const metadata = {
   title: "Nervi",
-  description: "Nervi – a trauma-aware, nervous-system-focused AI guide.",
+  description: "Nervi – a trauma-aware, nervous-system-focused AI companion.",
   viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
   icons: {
     icon: [
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body>
         <Providers>{children}</Providers>
+        <CookieConsentBanner />
       </body>
     </html>
   );

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "../../../lib/email";
+import { logInfo, logError } from "../../../lib/logger";
+import { rateLimiters } from "../../../lib/rateLimit";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,6 +16,12 @@ const supabase =
     : null;
 
 export async function POST(request) {
+  // Apply rate limiting: 3 password reset requests per hour per IP
+  const rateLimitResult = rateLimiters.passwordReset(request);
+  if (rateLimitResult) {
+    return rateLimitResult;
+  }
+
   try {
     const body = await request.json();
     const { email } = body || {};
@@ -41,7 +49,7 @@ export async function POST(request) {
 
     // Always return success to prevent email enumeration
     if (userError || !user) {
-      console.log("[PASSWORD RESET] User not found for email:", email);
+      logInfo("Password reset requested for non-existent user", { operation: "request_password_reset" });
       return NextResponse.json({
         success: true,
         message: "If an account exists with that email, you will receive password reset instructions.",
@@ -62,7 +70,7 @@ export async function POST(request) {
       .eq("id", user.id);
 
     if (updateError) {
-      console.error("[PASSWORD RESET] Error saving reset token:", updateError);
+      logError("Failed to save password reset token", updateError, { operation: "request_password_reset" });
       return NextResponse.json(
         { error: "Failed to generate reset token" },
         { status: 500 }
@@ -73,10 +81,10 @@ export async function POST(request) {
     const emailResult = await sendPasswordResetEmail(user.email, resetToken);
 
     if (!emailResult.success && !emailResult.skipped) {
-      console.error("[PASSWORD RESET] Failed to send email:", emailResult.error);
+      logError("Failed to send password reset email", emailResult.error, { operation: "request_password_reset" });
       // Still return success to prevent enumeration
     } else {
-      console.log("[PASSWORD RESET] Reset email sent to:", user.email);
+      logInfo("Password reset email sent", { operation: "request_password_reset" });
     }
 
     return NextResponse.json({
@@ -84,7 +92,7 @@ export async function POST(request) {
       message: "If an account exists with that email, you will receive password reset instructions.",
     });
   } catch (err) {
-    console.error("[PASSWORD RESET] Unexpected error:", err);
+    logError("Unexpected error in request password reset endpoint", err, { endpoint: "/api/request-password-reset" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

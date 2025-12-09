@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import { logError } from "../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -46,7 +47,7 @@ export async function GET(request) {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Error generating daily tasks:", error);
+    logError("Failed to generate daily tasks", error, { endpoint: "/api/daily-tasks" });
     return NextResponse.json(
       { error: "Failed to generate tasks" },
       { status: 500 }
@@ -140,7 +141,7 @@ async function gatherUserContext(userId) {
       userProfile: userProfile || {},
     };
   } catch (error) {
-    console.error("Error gathering user context:", error);
+    logError("Failed to gather user context for daily tasks", error, { operation: "gather_user_context" });
     return {
       dayOfWeek,
       today: today.toISOString().split("T")[0],
@@ -285,7 +286,7 @@ Be specific. Be detailed. Be clinical. Reference their actual data. Teach them H
 
     return [];
   } catch (error) {
-    console.error("Error generating tasks with AI:", error);
+    logError("Failed to generate tasks with AI, using fallback", error, { operation: "generate_personalized_tasks" });
 
     // Fallback: return context-aware default tasks
     return generateFallbackTasks(context);

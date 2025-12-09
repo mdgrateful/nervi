@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe, SUBSCRIPTION_PLANS } from "../../../lib/stripe";
+import { logInfo, logError } from "../../../lib/logger";
+import { rateLimiters } from "../../../lib/rateLimit";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,6 +15,12 @@ const supabase =
     : null;
 
 export async function POST(request) {
+  // Apply rate limiting: 10 checkout attempts per hour per IP
+  const rateLimitResult = rateLimiters.strict(request);
+  if (rateLimitResult) {
+    return rateLimitResult;
+  }
+
   try {
     const body = await request.json();
     const { userId, tier } = body || {};
@@ -116,14 +124,14 @@ export async function POST(request) {
       },
     });
 
-    console.log(`[STRIPE] Created checkout session for user ${userId}, tier: ${tier}`);
+    logInfo("Created checkout session", { operation: "create_checkout_session" });
 
     return NextResponse.json({
       sessionId: session.id,
       url: session.url,
     });
   } catch (err) {
-    console.error("[STRIPE] Error creating checkout session:", err);
+    logError("Failed to create checkout session", err, { operation: "create_checkout_session" });
     return NextResponse.json(
       { error: err.message || "Failed to create checkout session" },
       { status: 500 }

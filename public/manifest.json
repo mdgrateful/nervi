@@ -1,0 +1,68 @@
+{
+  "name": "Nervi - Nervous System Companion",
+  "short_name": "Nervi",
+  "description": "A trauma-aware, nervous-system-focused AI companion for daily regulation and wellbeing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1F2937",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/nervi-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "wellness", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Go to your dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/nervi-logo.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Chat with Nervi",
+      "short_name": "Chat",
+      "description": "Start a conversation with Nervi",
+      "url": "/nervi",
+      "icons": [
+        {
+          "src": "/nervi-logo.svg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/nervi",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "text": "text"
+    }
+  }
+}

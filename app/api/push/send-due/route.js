@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webPush from "web-push";
+import { logError, logInfo } from "../../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,7 +65,7 @@ export async function GET() {
       .select("user_id, endpoint, p256dh, auth");
 
     if (subsError) {
-      console.error("Error loading subscriptions:", subsError);
+      logError("Error loading subscriptions", subsError, { operation: "push_send_due" });
       return NextResponse.json(
         { error: "Error loading subscriptions" },
         { status: 500 }
@@ -130,7 +131,10 @@ export async function GET() {
           webPush
             .sendNotification(pushSub, payload)
             .catch((err) => {
-              console.error("Push error:", err);
+              logError("Push notification send failed", err, {
+                operation: "push_send_due",
+                endpoint: s.endpoint
+              });
             })
         );
       }
@@ -143,7 +147,9 @@ export async function GET() {
       notificationsSent: notifications.length,
     });
   } catch (err) {
-    console.error("Unexpected error in /api/push/send-due:", err);
+    logError("Unexpected error in push send-due endpoint", err, {
+      endpoint: "/api/push/send-due"
+    });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

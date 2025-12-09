@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { logError, logSecurityEvent } from "../../../../lib/logger";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -40,7 +41,7 @@ export const authOptions = {
           .or(`username.eq.${normalizedUsername},email.eq.${normalizedUsername}`);
 
         if (error || !users || users.length === 0) {
-          console.error("User not found:", credentials.username);
+          logSecurityEvent("Failed login attempt - user not found", { operation: "login" });
           return null;
         }
 
@@ -53,7 +54,7 @@ export const authOptions = {
         );
 
         if (!isValid) {
-          console.error("Invalid password for user:", credentials.username);
+          logSecurityEvent("Failed login attempt - invalid password", { operation: "login" });
           return null;
         }
 
@@ -76,13 +77,26 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.userId = user.userId;
         token.username = user.username;
         token.email = user.email;
         token.state = user.state;
+        token.sessionStart = Date.now(); // Track when session was created
       }
+
+      // Validate session age (force re-login if session is stale)
+      if (token.sessionStart) {
+        const sessionAge = Date.now() - token.sessionStart;
+        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+        if (sessionAge > maxAge) {
+          logSecurityEvent("Session expired - forcing re-authentication", { operation: "session_validation" });
+          throw new Error("Session expired");
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -103,7 +117,18 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days (reduced from 30 for security)
+  },
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production', // Force HTTPS in production
+      },
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

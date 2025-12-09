@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logInfo, logError, logSecurityEvent } from "../../../lib/logger";
+import { rateLimiters } from "../../../lib/rateLimit";
+import { sanitizeInput, isValidUUID, isValidUsername } from "../../../lib/validation";
+import { auditLog } from "../../../lib/auditLog";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,14 +16,41 @@ const supabase =
     : null;
 
 export async function DELETE(request) {
+  // Apply strict rate limiting: 10 delete attempts per hour per IP
+  const rateLimitResult = rateLimiters.strict(request);
+  if (rateLimitResult) {
+    return rateLimitResult;
+  }
+
   try {
     const body = await request.json();
-    const { userId, username } = body || {};
+    const { userId: rawUserId, username: rawUsername } = body || {};
 
     // Validation
-    if (!userId || !username) {
+    if (!rawUserId || !rawUsername) {
       return NextResponse.json(
         { error: "Missing userId or username" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize inputs
+    const userId = sanitizeInput(rawUserId, 100);
+    const username = sanitizeInput(rawUsername, 30).toLowerCase();
+
+    // Validate userId format
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      logSecurityEvent("Invalid userId format in delete account", { operation: "delete_account" });
+      return NextResponse.json(
+        { error: "Invalid userId format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate username format
+    if (!isValidUsername(username)) {
+      return NextResponse.json(
+        { error: "Invalid username format" },
         { status: 400 }
       );
     }
@@ -31,7 +62,7 @@ export async function DELETE(request) {
       );
     }
 
-    console.log(`[DELETE ACCOUNT] Starting deletion for user: ${userId} (${username})`);
+    logSecurityEvent("Account deletion started", { operation: "delete_account" });
 
     // Verify user exists and username matches
     const { data: user, error: userError } = await supabase
@@ -62,10 +93,10 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (memoriesError) {
-      console.error("[DELETE ACCOUNT] Error deleting memories:", memoriesError);
+      logError("Failed to delete user memories", memoriesError, { operation: "delete_account" });
       // Continue anyway - we want to delete as much as possible
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted conversations for user: ${userId}`);
+      logInfo("Deleted user conversations", { operation: "delete_account" });
     }
 
     // 2. Delete all notes (nervi_notes)
@@ -75,10 +106,10 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (notesError) {
-      console.error("[DELETE ACCOUNT] Error deleting notes:", notesError);
+      logError("Failed to delete user notes", notesError, { operation: "delete_account" });
       // Continue anyway
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted notes for user: ${userId}`);
+      logInfo("Deleted user notes", { operation: "delete_account" });
     }
 
     // 3. Delete life story chapters
@@ -88,9 +119,9 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (chaptersError) {
-      console.error("[DELETE ACCOUNT] Error deleting life story chapters:", chaptersError);
+      logError("Failed to delete life story chapters", chaptersError, { operation: "delete_account" });
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted life story chapters for user: ${userId}`);
+      logInfo("Deleted life story chapters", { operation: "delete_account" });
     }
 
     // 4. Delete life story events
@@ -100,9 +131,9 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (eventsError) {
-      console.error("[DELETE ACCOUNT] Error deleting life story events:", eventsError);
+      logError("Failed to delete life story events", eventsError, { operation: "delete_account" });
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted life story events for user: ${userId}`);
+      logInfo("Deleted life story events", { operation: "delete_account" });
     }
 
     // 5. Delete life story threads
@@ -112,9 +143,9 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (threadsError) {
-      console.error("[DELETE ACCOUNT] Error deleting life story threads:", threadsError);
+      logError("Failed to delete life story threads", threadsError, { operation: "delete_account" });
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted life story threads for user: ${userId}`);
+      logInfo("Deleted life story threads", { operation: "delete_account" });
     }
 
     // 6. Delete daily tasks
@@ -124,9 +155,9 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (tasksError) {
-      console.error("[DELETE ACCOUNT] Error deleting daily tasks:", tasksError);
+      logError("Failed to delete daily tasks", tasksError, { operation: "delete_account" });
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted daily tasks for user: ${userId}`);
+      logInfo("Deleted daily tasks", { operation: "delete_account" });
     }
 
     // 7. Delete master schedule
@@ -136,9 +167,9 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (scheduleError) {
-      console.error("[DELETE ACCOUNT] Error deleting master schedule:", scheduleError);
+      logError("Failed to delete master schedule", scheduleError, { operation: "delete_account" });
     } else {
-      console.log(`[DELETE ACCOUNT] Deleted master schedule for user: ${userId}`);
+      logInfo("Deleted master schedule", { operation: "delete_account" });
     }
 
     // 8. Finally, delete the user profile itself
@@ -148,21 +179,22 @@ export async function DELETE(request) {
       .eq("user_id", userId);
 
     if (deleteUserError) {
-      console.error("[DELETE ACCOUNT] Error deleting user profile:", deleteUserError);
+      logError("Failed to delete user profile", deleteUserError, { operation: "delete_account" });
       return NextResponse.json(
         { error: "Error deleting user profile" },
         { status: 500 }
       );
     }
 
-    console.log(`[DELETE ACCOUNT] Successfully deleted all data for user: ${userId} (${username})`);
+    logSecurityEvent("Account successfully deleted", { operation: "delete_account" });
+    auditLog.accountDeleted(userId, username, request);
 
     return NextResponse.json({
       success: true,
       message: "Account and all associated data have been permanently deleted",
     });
   } catch (err) {
-    console.error("[DELETE ACCOUNT] Unexpected error:", err);
+    logError("Unexpected error in delete account endpoint", err, { endpoint: "/api/delete-account" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }

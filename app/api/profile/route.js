@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logError, logSecurityEvent } from "../../../lib/logger";
+import {
+  sanitizeInput,
+  isValidEmail,
+  isValidUsername,
+  isValidStateCode,
+  isValidTimeFormat,
+  isValidUUID,
+  parseBoolean,
+} from "../../../lib/validation";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,11 +25,23 @@ const supabase =
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const rawUserId = searchParams.get("userId");
 
-    if (!userId) {
+    if (!rawUserId) {
       return NextResponse.json(
         { error: "Missing userId" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize userId
+    const userId = sanitizeInput(rawUserId, 100);
+
+    // Validate UUID format (unless it's a dev user)
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      logSecurityEvent("Invalid userId format in profile GET", { operation: "get_profile" });
+      return NextResponse.json(
+        { error: "Invalid userId format" },
         { status: 400 }
       );
     }
@@ -39,7 +61,7 @@ export async function GET(request) {
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 = no rows returned
-      console.error("Error fetching profile:", error);
+      logError("Failed to fetch profile", error, { operation: "get_profile" });
       return NextResponse.json(
         { error: "Error fetching profile" },
         { status: 500 }
@@ -49,7 +71,7 @@ export async function GET(request) {
     // If no profile exists, return null (frontend will show form to create one)
     return NextResponse.json({ profile: data || null });
   } catch (err) {
-    console.error("Unexpected error in /api/profile GET:", err);
+    logError("Unexpected error in get profile endpoint", err, { endpoint: "/api/profile GET" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }
@@ -62,19 +84,73 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const {
-      userId,
-      username,
-      email,
-      state,
+      userId: rawUserId,
+      username: rawUsername,
+      email: rawEmail,
+      state: rawState,
       workStartTime,
       workEndTime,
       allowWorkNotifications,
       profilePictureUrl,
     } = body || {};
 
-    if (!userId) {
+    if (!rawUserId) {
       return NextResponse.json(
         { error: "Missing userId" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize inputs
+    const userId = sanitizeInput(rawUserId, 100);
+    const username = rawUsername ? sanitizeInput(rawUsername, 30).toLowerCase() : null;
+    const email = rawEmail ? sanitizeInput(rawEmail, 100).toLowerCase() : null;
+    const state = rawState ? sanitizeInput(rawState, 2).toUpperCase() : null;
+
+    // Validate userId format
+    if (!userId.startsWith("dev-") && !isValidUUID(userId)) {
+      logSecurityEvent("Invalid userId format in profile POST", { operation: "update_profile" });
+      return NextResponse.json(
+        { error: "Invalid userId format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate username if provided
+    if (username && !isValidUsername(username)) {
+      return NextResponse.json(
+        { error: "Username must be 3-30 characters and contain only letters, numbers, underscores, and dashes" },
+        { status: 400 }
+      );
+    }
+
+    // Validate email if provided
+    if (email && !isValidEmail(email)) {
+      return NextResponse.json(
+        { error: "Invalid email address" },
+        { status: 400 }
+      );
+    }
+
+    // Validate state if provided
+    if (state && !isValidStateCode(state)) {
+      return NextResponse.json(
+        { error: "Invalid state code" },
+        { status: 400 }
+      );
+    }
+
+    // Validate work times if provided
+    if (workStartTime && !isValidTimeFormat(workStartTime)) {
+      return NextResponse.json(
+        { error: "Invalid work start time format (use HH:MM)" },
+        { status: 400 }
+      );
+    }
+
+    if (workEndTime && !isValidTimeFormat(workEndTime)) {
+      return NextResponse.json(
+        { error: "Invalid work end time format (use HH:MM)" },
         { status: 400 }
       );
     }
@@ -88,12 +164,12 @@ export async function POST(request) {
 
     // Update user profile in users table (user must already exist from signup)
     const updateData = {
-      username: username || userId, // Use username if provided, otherwise use userId
-      email: email || `${userId}@nervi.app`, // Use email if provided, otherwise generate a default
-      state: state || null,
+      username: username || userId,
+      email: email || `${userId}@nervi.app`,
+      state: state,
       work_start_time: workStartTime || null,
       work_end_time: workEndTime || null,
-      allow_work_notifications: allowWorkNotifications || false,
+      allow_work_notifications: parseBoolean(allowWorkNotifications) || false,
       profile_picture_url: profilePictureUrl !== undefined ? profilePictureUrl : null,
     };
 
@@ -124,7 +200,7 @@ export async function POST(request) {
           .single();
 
         if (updateError) {
-          console.error("Error updating dev user by username:", updateError);
+          logError("Failed to update dev user", updateError, { operation: "update_profile" });
           return NextResponse.json(
             { error: "Error updating profile" },
             { status: 500 }
@@ -150,7 +226,7 @@ export async function POST(request) {
           .single();
 
         if (insertError) {
-          console.error("Error creating dev user:", insertError);
+          logError("Failed to create dev user", insertError, { operation: "create_profile" });
           return NextResponse.json(
             { error: "Error creating profile" },
             { status: 500 }
@@ -162,7 +238,7 @@ export async function POST(request) {
     }
 
     if (error) {
-      console.error("Error saving profile:", error);
+      logError("Failed to save profile", error, { operation: "update_profile" });
       return NextResponse.json(
         { error: "Error saving profile" },
         { status: 500 }
@@ -171,7 +247,7 @@ export async function POST(request) {
 
     return NextResponse.json({ profile: data });
   } catch (err) {
-    console.error("Unexpected error in /api/profile POST:", err);
+    logError("Unexpected error in update profile endpoint", err, { endpoint: "/api/profile POST" });
     return NextResponse.json(
       { error: "Unexpected server error" },
       { status: 500 }
