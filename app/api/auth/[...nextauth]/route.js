@@ -1,18 +1,8 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../../lib/supabase";
 import bcrypt from "bcryptjs";
 import { logError, logSecurityEvent } from "../../../../lib/logger";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 export const authOptions = {
   providers: [

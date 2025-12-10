@@ -1,18 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../lib/supabase";
 import { detectTriggers, detectBuffers } from "../../utils/patternLearning";
 import { logError, logInfo } from "../../../lib/logger";
 import { sanitizeInput, sanitizeTextContent, isValidUUID } from "../../../lib/validation";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 export async function GET(request) {
   try {

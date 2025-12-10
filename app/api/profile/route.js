@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../lib/supabase";
 import { logError, logSecurityEvent } from "../../../lib/logger";
 import {
   sanitizeInput,
@@ -10,16 +10,6 @@ import {
   isValidUUID,
   parseBoolean,
 } from "../../../lib/validation";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 // GET: Fetch user profile
 export async function GET(request) {

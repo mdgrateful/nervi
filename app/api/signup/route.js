@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../lib/supabase";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { sendWelcomeEmail } from "../../../lib/email";
@@ -16,15 +16,6 @@ import {
 } from "../../../lib/validation";
 import { auditLog } from "../../../lib/auditLog";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 export async function POST(request) {
   // Apply rate limiting: 3 signups per hour per IP

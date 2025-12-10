@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../../lib/supabase";
 import { randomBytes } from "crypto";
 import { rateLimiters } from "../../../../lib/rateLimit";
 import { logInfo, logError, logSecurityEvent } from "../../../../lib/logger";
 import { sanitizeInput, isValidEmail } from "../../../../lib/validation";
 import { sendPasswordResetEmail } from "../../../../lib/email";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 export async function POST(request) {
   // Apply rate limiting: 3 password reset requests per hour per IP

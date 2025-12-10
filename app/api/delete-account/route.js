@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../lib/supabase";
 import { logInfo, logError, logSecurityEvent } from "../../../lib/logger";
 import { rateLimiters } from "../../../lib/rateLimit";
 import { sanitizeInput, isValidUUID, isValidUsername } from "../../../lib/validation";
 import { auditLog } from "../../../lib/auditLog";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false },
-      })
-    : null;
 
 export async function DELETE(request) {
   // Apply strict rate limiting: 10 delete attempts per hour per IP

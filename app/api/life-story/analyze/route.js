@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../../lib/supabase";
 import { logInfo, logError } from "../../../../lib/logger";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // POST - Analyze chat history and generate threads/patterns
 export async function POST(request) {
