@@ -184,88 +184,82 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         className="auth-links"
       >
         {status === "loading" ? null : status === "authenticated" ? (
-          <>
-            {/* User Info Display */}
-            <div
-              onClick={() => go("/profile")}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: spacing.sm,
-                padding: `${spacing.xs} ${spacing.sm}`,
-                background: theme.surface,
-                borderRadius: borderRadius.full,
-                border: `1px solid ${theme.border}`,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = theme.surfaceHover;
-                e.currentTarget.style.transform = 'scale(1.02)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = theme.surface;
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              {/* Profile Photo */}
-              {(profilePictureUrl || userProfile?.profile_picture_url) ? (
-                <img
-                  src={profilePictureUrl || userProfile.profile_picture_url}
-                  alt="Profile"
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: `2px solid ${theme.border}`,
-                  }}
-                />
-              ) : (
-                <div style={{
+          /* User Info Display */
+          <div
+            onClick={() => go("/profile")}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing.sm,
+              padding: `${spacing.xs} ${spacing.sm}`,
+              background: theme.surface,
+              borderRadius: borderRadius.full,
+              border: `1px solid ${theme.border}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = theme.surfaceHover;
+              e.currentTarget.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = theme.surface;
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            {/* Profile Photo */}
+            {(profilePictureUrl || userProfile?.profile_picture_url) ? (
+              <img
+                src={profilePictureUrl || userProfile.profile_picture_url}
+                alt="Profile"
+                style={{
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: typography.fontSizes.sm,
-                  fontWeight: typography.fontWeights.semibold,
-                }}>
-                  {session.user.username?.charAt(0).toUpperCase() || 'U'}
-                </div>
-              )}
-
-              {/* User ID */}
+                  objectFit: 'cover',
+                  border: `2px solid ${theme.border}`,
+                }}
+              />
+            ) : (
               <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)`,
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: typography.fontSizes.sm,
+                fontWeight: typography.fontWeights.semibold,
               }}>
-                <span style={{
-                  fontSize: typography.fontSizes.xs,
-                  color: theme.textMuted,
-                  lineHeight: '1',
-                }}>
-                  {userId || session.user.id || session.user.username}
-                </span>
-                <span style={{
-                  fontSize: typography.fontSizes.xs,
-                  color: theme.textSecondary,
-                  lineHeight: '1',
-                  fontWeight: typography.fontWeights.medium,
-                }}>
-                  {session.user.username}
-                </span>
+                {session.user.username?.charAt(0).toUpperCase() || 'U'}
               </div>
-            </div>
+            )}
 
-            <button type="button" onClick={handleLogout} style={authButtonStyle}>
-              Logout
-            </button>
-          </>
+            {/* User ID */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+            }}>
+              <span style={{
+                fontSize: typography.fontSizes.xs,
+                color: theme.textMuted,
+                lineHeight: '1',
+              }}>
+                {userId || session.user.id || session.user.username}
+              </span>
+              <span style={{
+                fontSize: typography.fontSizes.xs,
+                color: theme.textSecondary,
+                lineHeight: '1',
+                fontWeight: typography.fontWeights.medium,
+              }}>
+                {session.user.username}
+              </span>
+            </div>
+          </div>
         ) : (
           <>
             <button type="button" onClick={() => go("/login")} style={authButtonStyle}>
@@ -292,6 +286,11 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         ...nav.container,
         flexWrap: 'wrap',
       }} className={isMobileMenuOpen ? 'mobile-menu-open' : ''}>
+        {onToggleTheme && (
+          <button type="button" onClick={onToggleTheme} style={themeToggleStyle}>
+            {theme.background === lightTheme.background ? '🌙' : '☀️'}
+          </button>
+        )}
         <button type="button" onClick={() => go("/")} style={getButtonStyle("/")}>
           Chat
         </button>
@@ -313,9 +312,9 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         <button type="button" onClick={() => go("/terms")} style={getButtonStyle("/terms")}>
           Terms
         </button>
-        {onToggleTheme && (
-          <button type="button" onClick={onToggleTheme} style={themeToggleStyle}>
-            {theme.background === lightTheme.background ? '🌙' : '☀️'}
+        {status === "authenticated" && (
+          <button type="button" onClick={handleLogout} style={authButtonStyle}>
+            Logout
           </button>
         )}
       </nav>
