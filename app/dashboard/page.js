@@ -381,29 +381,11 @@ export default function DashboardPage() {
     }
   }
 
-  function getManualTasksForToday() {
-    if (typeof window === "undefined") return [];
-    const today = new Date().toDateString();
-    const saved = window.localStorage.getItem(`nerviManualTasks_${today}`);
-    if (!saved) return [];
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return [];
-    }
-  }
-
-  function saveManualTasks(tasks) {
-    if (typeof window === "undefined") return;
-    const today = new Date().toDateString();
-    window.localStorage.setItem(`nerviManualTasks_${today}`, JSON.stringify(tasks));
-  }
-
   async function loadTodayTasks(idToUse) {
     if (!idToUse || !idToUse.trim()) return;
 
     setLoading(true);
-    setTodayStatus("Generating your personalized plan…");
+    setTodayStatus("Loading your personalized plan…");
     setTodayTasks([]);
 
     try {
@@ -412,53 +394,73 @@ export default function DashboardPage() {
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to generate daily tasks");
+        throw new Error(data.error || "Failed to load daily tasks");
       }
 
       const tasks = data.tasks || [];
 
-      // Load manual tasks
-      const manualTasks = getManualTasksForToday();
-
-      // Combine AI-generated and manual tasks
-      const allTasks = [...tasks, ...manualTasks];
-
-      if (allTasks.length === 0) {
+      if (tasks.length === 0) {
         setTodayStatus("Let's chat first so I can learn what supports you best.");
       } else {
         setTodayStatus("");
       }
 
-      setTodayTasks(allTasks);
+      setTodayTasks(tasks);
     } catch (err) {
       console.error(err);
-      setTodayStatus("Couldn't generate your plan. Let's try refreshing.");
+      setTodayStatus("Couldn't load your plan. Let's try refreshing.");
     } finally {
       setLoading(false);
     }
   }
 
-  function addManualTask() {
-    if (!newTaskInput.trim()) return;
+  async function addManualTask() {
+    if (!newTaskInput.trim() || !userId) return;
 
-    const manualTasks = getManualTasksForToday();
-    manualTasks.push(newTaskInput.trim());
-    saveManualTasks(manualTasks);
+    try {
+      const res = await fetch('/api/daily-tasks/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          taskInput: newTaskInput.trim(),
+        }),
+      });
 
-    // Reload tasks to show the new one
-    setTodayTasks(prev => [...prev, newTaskInput.trim()]);
-    setNewTaskInput("");
-    setShowAddTask(false);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to add task");
+      }
+
+      // Add the new task to the list
+      setTodayTasks(prev => [...prev, data.task]);
+      setNewTaskInput("");
+      setShowAddTask(false);
+    } catch (err) {
+      console.error("Error adding custom task:", err);
+      alert("Failed to add task. Please try again.");
+    }
   }
 
-  function removeManualTask(task) {
-    const manualTasks = getManualTasksForToday();
-    const filtered = manualTasks.filter(t => t !== task);
-    saveManualTasks(filtered);
+  async function removeManualTask(task) {
+    if (!userId || !task || !task.id) return;
 
-    // Reload tasks
-    if (userId) {
+    try {
+      const res = await fetch(
+        `/api/daily-tasks/custom?userId=${encodeURIComponent(userId)}&taskId=${encodeURIComponent(task.id)}`,
+        { method: 'DELETE' }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to remove task");
+      }
+
+      // Reload tasks to reflect the removal
       loadTodayTasks(userId);
+    } catch (err) {
+      console.error("Error removing custom task:", err);
+      alert("Failed to remove task. Please try again.");
     }
   }
 
@@ -639,15 +641,14 @@ export default function DashboardPage() {
 
             <div style={todayListStyle}>
               {todayTasks.slice(0, visibleTaskCount).map((task, idx) => {
-                // Handle both object (AI-generated) and string (manual) formats
-                const isObject = typeof task === "object" && task.activity;
-                const isManual = typeof task === "string" && getManualTasksForToday().includes(task);
+                // All tasks are now objects from the database
+                const isManual = task.dataSource === 'user_added';
                 const isEditing = editingTaskIndex === idx;
 
-                const taskTime = isObject ? task.time : "";
-                const taskActivity = isObject ? task.activity : task;
-                const taskWhy = isObject ? task.why : null;
-                const taskDataSource = isObject ? task.dataSource : null;
+                const taskTime = task.time;
+                const taskActivity = task.activity;
+                const taskWhy = task.why;
+                const taskDataSource = task.dataSource;
 
                 if (isEditing) {
                   return (
@@ -770,7 +771,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ display: "flex", gap: spacing.xs }}>
                       <button
-                        onClick={() => startEditingTask(idx, isObject ? `${taskTime} – ${taskActivity}` : task)}
+                        onClick={() => startEditingTask(idx, `${taskTime} – ${taskActivity}`)}
                         style={{
                           background: "transparent",
                           border: "none",
