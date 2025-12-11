@@ -19,6 +19,14 @@ export function DisclaimerModal({ theme = lightTheme, onAccept }) {
   const handleAccept = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("nervi_disclaimer_accepted", "true");
+
+      // Check if user is already authenticated
+      const userId = window.localStorage.getItem("nerviUserId");
+      if (!userId || !userId.trim()) {
+        // Not authenticated - redirect to login page
+        window.location.href = "/login";
+        return;
+      }
     }
     setIsVisible(false);
     if (onAccept) onAccept();

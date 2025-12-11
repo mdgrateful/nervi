@@ -1,63 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   spacing,
   borderRadius,
   typography,
   colors,
-  getComponents,
+  getComponents
 } from "../design-system";
+import { NerviHeader } from "../components/NerviHeader";
 import { useTheme } from "../hooks/useTheme";
 
 export default function LoginPage() {
-  const { theme, toggleTheme } = useTheme();
-  const components = getComponents(theme);
-
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const { theme } = useTheme();
+  const router = useRouter();
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userId = window.localStorage.getItem("nerviUserId");
+      if (userId && userId.trim()) {
+        // Already logged in, redirect to dashboard
+        router.push("/dashboard");
+      }
+    }
+  }, [router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    try {
-      const result = await signIn("credentials", {
-        username,
-        password,
-        redirect: false,
-      });
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) {
+      setError("Please enter your name or email");
+      return;
+    }
 
-      if (result?.error) {
-        setError("Invalid username or password");
-        setLoading(false);
+    // Basic email validation if it looks like an email
+    if (normalized.includes("@")) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalized)) {
+        setError("Please enter a valid email address");
         return;
       }
+    }
 
-      // Store userId in localStorage for legacy compatibility
+    setLoading(true);
+
+    try {
+      // Save to localStorage
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("nerviUserId", username);
+        window.localStorage.setItem("nerviUserId", normalized);
       }
 
       // Redirect to dashboard
-      window.location.href = "/dashboard";
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
     } catch (err) {
       console.error(err);
-      setError("An error occurred. Please try again.");
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   }
 
-  function goToSignup() {
-    if (typeof window !== "undefined") {
-      window.location.href = "/signup";
-    }
-  }
+  const components = getComponents(theme);
 
   const containerStyle = {
     ...components.container,
@@ -65,46 +76,48 @@ export default function LoginPage() {
     alignItems: "center",
     justifyContent: "center",
     minHeight: "100vh",
+    padding: spacing.xl,
   };
 
   const cardStyle = {
     width: "100%",
-    maxWidth: "440px",
+    maxWidth: "480px",
     ...components.card,
     display: "flex",
     flexDirection: "column",
     gap: spacing.lg,
+    padding: spacing.xxl,
   };
 
   const inputStyle = {
-    width: "100%",
-    padding: spacing.md,
-    border: `1px solid ${theme.border}`,
-    borderRadius: borderRadius.md,
-    background: theme.background,
-    color: theme.textPrimary,
-    fontSize: typography.fontSizes.md,
-    outline: "none",
+    ...components.input,
+    fontSize: typography.fontSizes.base,
   };
 
-  const labelStyle = {
-    fontSize: typography.fontSizes.sm,
-    color: theme.textSecondary,
-    display: "block",
-    marginBottom: spacing.xs,
-    fontWeight: typography.fontWeights.medium,
+  const buttonStyle = {
+    ...components.button,
+    ...components.buttonPrimary,
+    padding: `${spacing.md} ${spacing.xl}`,
+    fontSize: typography.fontSizes.base,
+    fontWeight: typography.fontWeights.semibold,
+    width: "100%",
+    cursor: loading ? "not-allowed" : "pointer",
+    opacity: loading ? 0.7 : 1,
   };
 
   return (
     <main style={containerStyle}>
+      <NerviHeader theme={theme} />
       <div style={cardStyle}>
-        {/* Header */}
-        <div style={{ textAlign: "center" }}>
+        {/* Logo/Icon */}
+        <div style={{ textAlign: "center", marginBottom: spacing.md }}>
+          <div style={{ fontSize: "48px", marginBottom: spacing.sm }}>🧠</div>
           <h1
             style={{
-              fontSize: typography.fontSizes["2xl"],
+              fontSize: typography.fontSizes.xxl,
               fontWeight: typography.fontWeights.bold,
               color: theme.textPrimary,
+              margin: 0,
               marginBottom: spacing.xs,
             }}
           >
@@ -112,86 +125,62 @@ export default function LoginPage() {
           </h1>
           <p
             style={{
-              fontSize: typography.fontSizes.sm,
-              color: theme.textMuted,
+              fontSize: typography.fontSizes.base,
+              color: theme.textSecondary,
+              margin: 0,
+              lineHeight: "1.6",
             }}
           >
-            Your nervous system companion
+            Your AI nervous system companion
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
           <div>
-            <label style={labelStyle}>Username</label>
+            <label
+              htmlFor="email"
+              style={{
+                display: "block",
+                fontSize: typography.fontSizes.sm,
+                fontWeight: typography.fontWeights.medium,
+                color: theme.textSecondary,
+                marginBottom: spacing.xs,
+              }}
+            >
+              Enter your name or email
+            </label>
             <input
+              id="email"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g., sarah@example.com"
               style={inputStyle}
-              required
               autoFocus
+              disabled={loading}
             />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                style={{ ...inputStyle, paddingRight: "40px" }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute",
-                  right: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  color: theme.textMuted,
-                  fontSize: "18px",
-                }}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? "👁️" : "👁️‍🗨️"}
-              </button>
-            </div>
-            <div style={{ marginTop: spacing.xs, textAlign: "right" }}>
-              <a
-                href="/forgot-password"
-                style={{
-                  fontSize: typography.fontSizes.sm,
-                  color: theme.textSecondary,
-                  textDecoration: "none",
-                }}
-              >
-                Forgot Password?
-              </a>
-            </div>
+            <p
+              style={{
+                fontSize: typography.fontSizes.xs,
+                color: theme.textMuted,
+                marginTop: spacing.xs,
+                marginBottom: 0,
+              }}
+            >
+              This helps Nervi remember you and personalize your experience
+            </p>
           </div>
 
           {error && (
             <div
               style={{
                 padding: spacing.sm,
-                background: `${colors.error}15`,
+                background: `${colors.error}20`,
                 border: `1px solid ${colors.error}`,
                 borderRadius: borderRadius.md,
-                color: colors.error,
                 fontSize: typography.fontSizes.sm,
-                textAlign: "center",
+                color: colors.error,
               }}
             >
               {error}
@@ -200,84 +189,57 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            style={{
-              ...components.button,
-              ...components.buttonPrimary,
-              padding: spacing.md,
-              fontSize: typography.fontSizes.md,
-            }}
+            style={buttonStyle}
+            disabled={loading || !email.trim()}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Starting..." : "Get Started"}
           </button>
         </form>
 
-        {/* Divider */}
-        <div style={{ position: "relative", textAlign: "center" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: "50%",
-              height: "1px",
-              background: theme.border,
-            }}
-          />
-          <span
-            style={{
-              position: "relative",
-              background: theme.surface,
-              padding: `0 ${spacing.md}`,
-              fontSize: typography.fontSizes.sm,
-              color: theme.textMuted,
-            }}
-          >
-            or
-          </span>
-        </div>
-
-        {/* Sign up link */}
-        <div style={{ textAlign: "center" }}>
+        {/* Info */}
+        <div
+          style={{
+            marginTop: spacing.md,
+            padding: spacing.md,
+            background: theme.surfaceHover,
+            borderRadius: borderRadius.md,
+            border: `1px solid ${theme.border}`,
+          }}
+        >
           <p
             style={{
-              fontSize: typography.fontSizes.sm,
-              color: theme.textSecondary,
-              marginBottom: spacing.sm,
-            }}
-          >
-            Don't have an account?
-          </p>
-          <button
-            type="button"
-            onClick={goToSignup}
-            style={{
-              ...components.button,
-              background: theme.surface,
-              border: `1px solid ${theme.border}`,
-              color: theme.textPrimary,
-              width: "100%",
-            }}
-          >
-            Create Account
-          </button>
-        </div>
-
-        {/* Theme toggle */}
-        <div style={{ textAlign: "center" }}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            style={{
-              background: "transparent",
-              border: "none",
+              fontSize: typography.fontSizes.xs,
               color: theme.textMuted,
-              cursor: "pointer",
-              fontSize: typography.fontSizes.sm,
+              margin: 0,
+              lineHeight: "1.6",
+              textAlign: "center",
             }}
           >
-            {theme.background === "#FFFFFF" ? "🌙 Dark Mode" : "☀️ Light Mode"}
-          </button>
+            By continuing, you agree to our{" "}
+            <a
+              href="/terms"
+              target="_blank"
+              style={{
+                color: theme.accent,
+                textDecoration: "none",
+                fontWeight: typography.fontWeights.medium,
+              }}
+            >
+              Terms
+            </a>{" "}
+            and{" "}
+            <a
+              href="/privacy"
+              target="_blank"
+              style={{
+                color: theme.accent,
+                textDecoration: "none",
+                fontWeight: typography.fontWeights.medium,
+              }}
+            >
+              Privacy Policy
+            </a>
+          </p>
         </div>
       </div>
     </main>
