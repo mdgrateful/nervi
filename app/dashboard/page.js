@@ -19,21 +19,29 @@ import { useTheme } from "../hooks/useTheme";
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  const rawData =
-    typeof window !== "undefined"
-      ? window.atob(base64)
-      : Buffer.from(base64, "base64").toString("binary");
-
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+  if (!base64String || typeof base64String !== 'string') {
+    throw new Error('Invalid VAPID key: key is empty or not a string');
   }
-  return outputArray;
+
+  try {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const rawData =
+      typeof window !== "undefined"
+        ? window.atob(base64)
+        : Buffer.from(base64, "base64").toString("binary");
+
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (err) {
+    throw new Error(`Invalid VAPID key format: ${err.message}`);
+  }
 }
 
 // --- nervous-system–oriented quotes ---
@@ -263,6 +271,13 @@ export default function DashboardPage() {
       if (typeof window === "undefined") return;
       if (!userId || !userId.trim()) {
         alert("Set your Nervi user id on the Chat page first.");
+        return;
+      }
+
+      // Validate VAPID key
+      if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.trim() === "") {
+        setNotificationError("Push notifications are not configured. Contact support.");
+        console.error('[Push] VAPID_PUBLIC_KEY is not set');
         return;
       }
 
