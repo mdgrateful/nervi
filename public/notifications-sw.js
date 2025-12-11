@@ -1,5 +1,5 @@
 // public/notifications-sw.js
-// Version: 2.0 - Force cache invalidation for VAPID key fix
+// Version: 2.1 - Fixed VAPID_SUBJECT format (added mailto: prefix)
 
 self.addEventListener("activate", (event) => {
   console.log("[SW] Activated version 2.0");
