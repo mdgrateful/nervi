@@ -143,21 +143,20 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         type="button"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         style={{
-          display: 'none',
-          position: 'absolute',
-          top: spacing.md,
-          left: spacing.md,
-          padding: spacing.md,
+          display: 'flex',
+          position: 'fixed',
+          top: spacing.lg,
+          left: spacing.xl,
+          padding: spacing.sm,
           background: theme.surface,
           border: `2px solid ${theme.border}`,
-          borderRadius: borderRadius.lg,
+          borderRadius: borderRadius.md,
           cursor: 'pointer',
           zIndex: 1001,
-          fontSize: '32px',
+          fontSize: '24px',
           lineHeight: '1',
-          width: '56px',
-          height: '56px',
-          display: 'flex',
+          width: '48px',
+          height: '48px',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'transform 0.2s ease',
@@ -342,6 +341,12 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         </button>
         <button type="button" onClick={() => go("/profile")} style={getButtonStyle("/profile")}>
           Profile
+        </button>
+        <button type="button" onClick={() => go("/privacy")} style={getButtonStyle("/privacy")}>
+          Privacy
+        </button>
+        <button type="button" onClick={() => go("/terms")} style={getButtonStyle("/terms")}>
+          Terms
         </button>
         {onToggleTheme && (
           <button type="button" onClick={onToggleTheme} style={themeToggleStyle}>
