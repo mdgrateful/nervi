@@ -1,4 +1,19 @@
 // public/notifications-sw.js
+// Version: 2.0 - Force cache invalidation for VAPID key fix
+
+self.addEventListener("activate", (event) => {
+  console.log("[SW] Activated version 2.0");
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log("[SW] Clearing cache:", cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+    })
+  );
+});
 
 self.addEventListener("push", (event) => {
   let data = {};
