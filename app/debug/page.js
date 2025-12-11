@@ -143,9 +143,12 @@ export default function DebugPage() {
       // Format the result nicely
       const result = `
 📅 Debug Info:
-- Server time: ${data.debug.now}
-- Today's date: ${data.debug.today}
+- Server time (UTC): ${data.debug.serverTimeUTC}
+- Eastern Time: ${data.debug.easternTime}
+- Today's date (ET): ${data.debug.easternDate}
+- Timezone: ${data.debug.timezone}
 - Current minutes: ${data.debug.nowMinutes} (${data.debug.nowTime})
+- Window: ${data.debug.windowMinutes} minutes
 - Has push subscription: ${data.hasPushSubscription ? '✅' : '❌'}
 
 📋 Tasks:
@@ -154,8 +157,8 @@ export default function DebugPage() {
 
 ${data.tasks.map(t => `
   ${t.wouldTrigger ? '🔔' : '⏰'} ${t.activity}
-  Time: ${t.time} (${t.taskMinutes} mins)
-  Minutes until: ${t.minutesUntil}
+  Time: ${t.time} (${t.taskMinutes === Number.POSITIVE_INFINITY ? 'not parseable' : t.taskMinutes + ' mins'})
+  Minutes until: ${t.minutesUntil === Number.POSITIVE_INFINITY ? 'N/A' : t.minutesUntil}
   Completed: ${t.completed ? '✅' : '❌'}
   Would trigger: ${t.wouldTrigger ? 'YES' : 'NO'}
 `).join('\n')}
@@ -169,6 +172,19 @@ ${data.tasks.map(t => `
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "monospace" }}>
+      <div style={{ marginBottom: "20px" }}>
+        <a
+          href="/dashboard"
+          style={{
+            color: "#007bff",
+            textDecoration: "none",
+            fontSize: "14px",
+            fontWeight: "500"
+          }}
+        >
+          ← Back to Dashboard
+        </a>
+      </div>
       <h1>Notification Debug</h1>
 
       <div style={{ marginTop: "20px", padding: "10px", background: "#f5f5f5", borderRadius: "4px" }}>
