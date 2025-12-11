@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabase } from "../../../../lib/supabase";
 
 /**
- * GET /api/program/current
+ * GET /api/program/current?userId=xxx
  * Get the current active 2-week program with all tasks
  */
 export async function GET(request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId || !userId.trim()) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
     if (!supabase) {
@@ -20,8 +20,6 @@ export async function GET(request) {
         { status: 500 }
       );
     }
-
-    const userId = session.user.id;
 
     // Get active program
     const { data: program, error: programError } = await supabase

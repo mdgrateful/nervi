@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabase } from "../../../../lib/supabase";
 import { extractUserProfile, generate14DayProgram } from "../../../../lib/programGenerator";
 
@@ -15,15 +13,13 @@ import { extractUserProfile, generate14DayProgram } from "../../../../lib/progra
  */
 export async function POST(request) {
   try {
-    // Authentication check
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
     const forcePhase = body.forcePhase;
+
+    if (!userId || !userId.trim()) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    }
 
     console.log(`Generating program for user ${userId}${forcePhase ? ` (forced phase: ${forcePhase})` : ''}`);
 

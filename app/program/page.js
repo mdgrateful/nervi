@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { spacing, borderRadius, typography, getComponents } from "../design-system";
 import { SharedNav } from "../components/SharedNav";
 import { BottomNav } from "../components/BottomNav";
@@ -10,10 +8,9 @@ import { NerviHeader } from "../components/NerviHeader";
 import { useTheme } from "../hooks/useTheme";
 
 export default function ProgramPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const { theme } = useTheme();
 
+  const [userId, setUserId] = useState("");
   const [program, setProgram] = useState(null);
   const [days, setDays] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,26 +23,32 @@ export default function ProgramPage() {
 
   const components = getComponents(theme);
 
-  // Authentication check
+  // Load userId from localStorage
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("nerviUserId");
+    if (saved && saved.trim()) {
+      setUserId(saved);
     }
-  }, [status, router]);
+  }, []);
 
-  // Load current program
+  // Load current program when userId is available
   useEffect(() => {
-    if (status === "authenticated") {
+    if (userId && userId.trim()) {
       fetchProgram();
+    } else {
+      setLoading(false);
     }
-  }, [status]);
+  }, [userId]);
 
   async function fetchProgram() {
+    if (!userId || !userId.trim()) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/program/current");
+      const response = await fetch(`/api/program/current?userId=${encodeURIComponent(userId)}`);
       if (!response.ok) throw new Error("Failed to load program");
 
       const data = await response.json();
@@ -60,6 +63,11 @@ export default function ProgramPage() {
   }
 
   async function generateNewProgram() {
+    if (!userId || !userId.trim()) {
+      setError("No user ID found. Set your ID on the Chat page first.");
+      return;
+    }
+
     try {
       setGenerating(true);
       setError(null);
@@ -67,7 +75,7 @@ export default function ProgramPage() {
       const response = await fetch("/api/program/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {
@@ -137,7 +145,7 @@ export default function ProgramPage() {
     return dateString === today;
   }
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div style={{ ...styles.container(theme), ...styles.centerContent }}>
         <NerviHeader theme={theme} />
@@ -148,6 +156,28 @@ export default function ProgramPage() {
             Loading your program...
           </p>
         </div>
+        <BottomNav currentPage="/program" theme={theme} />
+      </div>
+    );
+  }
+
+  // No userId set - show message
+  if (!userId || !userId.trim()) {
+    return (
+      <div style={styles.container(theme)}>
+        <NerviHeader theme={theme} />
+        <SharedNav />
+
+        <div style={styles.content}>
+          <div style={styles.emptyState(theme)}>
+            <div style={styles.emptyIcon}>👤</div>
+            <h2 style={styles.emptyTitle(theme)}>Set Your User ID</h2>
+            <p style={styles.emptyText(theme)}>
+              Go to the Chat page and set your Nervi user ID first, then come back here to build your program.
+            </p>
+          </div>
+        </div>
+
         <BottomNav currentPage="/program" theme={theme} />
       </div>
     );
