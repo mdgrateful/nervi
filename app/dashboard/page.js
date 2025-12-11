@@ -264,7 +264,32 @@ export default function DashboardPage() {
     } else {
       setTodayStatus("No user selected yet. Set your id on the Chat page.");
     }
+
+    // Check if notifications are already enabled
+    checkExistingNotificationSubscription();
   }, []);
+
+  async function checkExistingNotificationSubscription() {
+    try {
+      if (typeof window === "undefined") return;
+      if (!("serviceWorker" in navigator)) return;
+      if (!("PushManager" in window)) return;
+
+      // Check if service worker is registered
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) return;
+
+      // Check if there's an existing push subscription
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        console.log("[Push] Found existing subscription on load");
+        setNotificationsEnabled(true);
+      }
+    } catch (err) {
+      console.error("[Push] Error checking existing subscription:", err);
+      // Silent fail - don't show error to user
+    }
+  }
 
   async function enableNotifications() {
     try {
