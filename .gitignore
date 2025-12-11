@@ -42,3 +42,9 @@ next-env.d.ts
 *.p8
 
 .vercel
+
+# local files and sensitive data
+KEYS.txt
+UTC DATE.txt
+claudeinstruct.txt
+nul
