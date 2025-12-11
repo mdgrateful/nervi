@@ -54,7 +54,7 @@ export async function GET() {
       now.getDay()
     ];
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const windowMinutes = 5; // look ahead 5 minutes
+    const windowMinutes = 2; // look ahead 2 minutes (cron runs every 1 minute)
 
     // 1) get all subscriptions
     const { data: subs, error: subsError } = await supabase
@@ -73,32 +73,58 @@ export async function GET() {
       return NextResponse.json({ ok: true, message: "No subscriptions." });
     }
 
-    // 2) for each user with subs, load their schedule
+    // 2) for each user with subs, load their schedule AND daily tasks
     const uniqueUsers = [...new Set(subs.map((s) => s.user_id))];
     const notifications = [];
 
     for (const userId of uniqueUsers) {
+      // Check master schedule blocks
       const { data: schedData, error: schedError } = await supabase
         .from("nervi_master_schedules")
         .select("schedule")
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (schedError || !schedData || !schedData.schedule) continue;
+      if (!schedError && schedData && schedData.schedule) {
+        const schedule = schedData.schedule;
+        const day = schedule.days?.find(
+          (d) => normalizeDayShort(d.key, d.label) === weekdayShort
+        );
+        const blocks = day?.blocks || [];
 
-      const schedule = schedData.schedule;
-      const day = schedule.days?.find(
-        (d) => normalizeDayShort(d.key, d.label) === weekdayShort
-      );
-      const blocks = day?.blocks || [];
+        for (const block of blocks) {
+          const minutes = getMinutesFromLine(block);
+          if (
+            minutes >= nowMinutes &&
+            minutes <= nowMinutes + windowMinutes
+          ) {
+            notifications.push({ userId, block, source: 'schedule' });
+          }
+        }
+      }
 
-      for (const block of blocks) {
-        const minutes = getMinutesFromLine(block);
-        if (
-          minutes >= nowMinutes &&
-          minutes <= nowMinutes + windowMinutes
-        ) {
-          notifications.push({ userId, block });
+      // Check daily tasks
+      const today = now.toISOString().split('T')[0];
+      const { data: tasksData, error: tasksError } = await supabase
+        .from("nervi_daily_tasks")
+        .select("time, activity, completed")
+        .eq("user_id", userId)
+        .eq("task_date", today)
+        .eq("completed", false);
+
+      if (!tasksError && tasksData && tasksData.length > 0) {
+        for (const task of tasksData) {
+          const minutes = getMinutesFromLine(task.time);
+          if (
+            minutes >= nowMinutes &&
+            minutes <= nowMinutes + windowMinutes
+          ) {
+            notifications.push({
+              userId,
+              block: `${task.time}: ${task.activity}`,
+              source: 'daily_task'
+            });
+          }
         }
       }
     }
