@@ -11,9 +11,32 @@ export async function GET(request) {
       return NextResponse.json({ error: "userId required" }, { status: 400 });
     }
 
+    // Convert server time (UTC) to Eastern Time (America/New_York)
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    const timeParts = timeFormatter.formatToParts(now);
+    const etHour = parseInt(timeParts.find(p => p.type === 'hour').value);
+    const etMinute = parseInt(timeParts.find(p => p.type === 'minute').value);
+
+    const dateParts = dateFormatter.formatToParts(now);
+    const etYear = dateParts.find(p => p.type === 'year').value;
+    const etMonth = dateParts.find(p => p.type === 'month').value;
+    const etDay = dateParts.find(p => p.type === 'day').value;
+    const today = `${etYear}-${etMonth}-${etDay}`;
+
+    const nowMinutes = etHour * 60 + etMinute;
     const windowMinutes = 5; // 5 minute window for testing
 
     // Get user's daily tasks
@@ -69,12 +92,13 @@ export async function GET(request) {
 
     return NextResponse.json({
       debug: {
-        now: now.toISOString(),
-        localTime: now.toString(),
-        today,
+        serverTimeUTC: now.toISOString(),
+        easternTime: `${etHour}:${String(etMinute).padStart(2, '0')} ET`,
+        easternDate: today,
         nowMinutes,
         nowTime: `${Math.floor(nowMinutes / 60)}:${String(nowMinutes % 60).padStart(2, '0')}`,
         windowMinutes,
+        timezone: 'America/New_York (Eastern Time)',
       },
       hasPushSubscription: subs && subs.length > 0,
       subscriptions: subs,

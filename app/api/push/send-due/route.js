@@ -49,11 +49,23 @@ export async function GET() {
       );
     }
 
+    // Convert server time (UTC) to Eastern Time (America/New_York)
+    // This is where most users are (Washington DC timezone)
     const now = new Date();
-    const weekdayShort = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
-      now.getDay()
-    ];
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      weekday: 'short'
+    });
+
+    const parts = formatter.formatToParts(now);
+    const etHour = parseInt(parts.find(p => p.type === 'hour').value);
+    const etMinute = parseInt(parts.find(p => p.type === 'minute').value);
+    const weekdayShort = parts.find(p => p.type === 'weekday').value.toLowerCase();
+
+    const nowMinutes = etHour * 60 + etMinute;
     const windowMinutes = 2; // look ahead 2 minutes (cron runs every 1 minute)
 
     // 1) get all subscriptions
@@ -103,8 +115,19 @@ export async function GET() {
         }
       }
 
-      // Check daily tasks
-      const today = now.toISOString().split('T')[0];
+      // Check daily tasks - use Eastern Time date
+      const etFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const etDateParts = etFormatter.formatToParts(now);
+      const etYear = etDateParts.find(p => p.type === 'year').value;
+      const etMonth = etDateParts.find(p => p.type === 'month').value;
+      const etDay = etDateParts.find(p => p.type === 'day').value;
+      const today = `${etYear}-${etMonth}-${etDay}`;
+
       const { data: tasksData, error: tasksError } = await supabase
         .from("nervi_daily_tasks")
         .select("time, activity, completed")

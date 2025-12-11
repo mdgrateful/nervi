@@ -12,7 +12,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * Parse natural language task input using AI
  * Handles: "remind me to call mom tomorrow at 3pm", "meeting 2morrow 2pm", "call john at 5"
  */
-async function parseTaskWithAI(taskInput) {
+async function parseTaskWithAI(taskInput, userTimezone = 'America/New_York') {
   try {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -26,10 +26,14 @@ async function parseTaskWithAI(taskInput) {
           content: `You parse natural language task inputs into structured data.
 
 Today is ${dayOfWeek}, ${todayStr}.
+User timezone: ${userTimezone} (Eastern Time)
 
 Extract:
 1. activity: The main task/action (clean up spelling, make it clear)
-2. time: Time in 12-hour format with AM/PM (e.g., "3:00 PM", "9:30 AM"). If no time specified, use "Anytime"
+2. time: Time in 12-hour format with AM/PM (e.g., "3:00 PM", "9:30 AM"). Always include AM/PM. If no time specified, use "Anytime"
+   - Handle variations: "3pm", "3 pm", "3:00pm", "3:00 PM", "15:00", "3", "three pm"
+   - If only hour given (no AM/PM), assume PM if 1-5, AM if 6-11
+   - Normalize to format "H:MM AM/PM" (e.g., "3:00 PM", "10:30 AM")
 3. date: ISO date (YYYY-MM-DD). Handle "today", "tomorrow", "tmrw", "2morrow", day names like "monday", "next week", etc.
 
 Return JSON: {"activity": "...", "time": "...", "date": "..."}
@@ -39,7 +43,9 @@ Examples:
 - "meeting 2morrow 2pm" → {"activity": "Meeting", "time": "2:00 PM", "date": "2025-12-12"}
 - "call john at 5" → {"activity": "Call John", "time": "5:00 PM", "date": "${todayStr}"}
 - "buy groceries" → {"activity": "Buy groceries", "time": "Anytime", "date": "${todayStr}"}
-- "workout monday 6am" → {"activity": "Workout", "time": "6:00 AM", "date": "2025-12-15"}`
+- "workout monday 6am" → {"activity": "Workout", "time": "6:00 AM", "date": "2025-12-15"}
+- "lunch at 12" → {"activity": "Lunch", "time": "12:00 PM", "date": "${todayStr}"}
+- "dentist 2:30" → {"activity": "Dentist", "time": "2:30 PM", "date": "${todayStr}"}`
         },
         {
           role: "user",
