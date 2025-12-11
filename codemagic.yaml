@@ -27,7 +27,7 @@ workflows:
         STRIPE_PREMIUM_PRICE_ID: $STRIPE_PREMIUM_PRICE_ID
         STRIPE_WEBHOOK_SECRET: $STRIPE_WEBHOOK_SECRET
         NEXT_PUBLIC_BASE_URL: $NEXT_PUBLIC_BASE_URL
-      node: v20.18.0
+      node: v22.11.0
     scripts:
       - name: Install dependencies
         script: |
@@ -75,7 +75,7 @@ workflows:
         - google_play
       vars:
         PACKAGE_NAME: "com.nervi.app"
-      node: v20.18.0
+      node: v22.11.0
     scripts:
       - name: Install dependencies
         script: |
