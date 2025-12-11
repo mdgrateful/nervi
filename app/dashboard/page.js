@@ -513,34 +513,41 @@ export default function DashboardPage() {
 
   function startEditingTask(index, task) {
     setEditingTaskIndex(index);
-
-    // Extract time if present
-    const timeMatch = task.match(/^(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[–-]\s*(.+)$/);
-    if (timeMatch) {
-      setEditingTaskTime(timeMatch[1].trim());
-      setEditingTaskText(timeMatch[2].trim());
-    } else {
-      setEditingTaskTime("");
-      setEditingTaskText(task);
-    }
+    // Task is now an object with time and activity fields
+    setEditingTaskTime(task.time || "");
+    setEditingTaskText(task.activity || "");
   }
 
-  function saveTaskEdit(originalTask) {
-    const edited = getEditedTasksForToday();
-    const newTask = editingTaskTime
-      ? `${editingTaskTime} – ${editingTaskText}`
-      : editingTaskText;
+  async function saveTaskEdit(task) {
+    if (!userId) return;
 
-    edited[originalTask] = newTask;
-    saveEditedTasks(edited);
+    try {
+      const res = await fetch('/api/daily-tasks/custom', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          taskId: task.id,
+          updates: {
+            time: editingTaskTime,
+            activity: editingTaskText,
+          },
+        }),
+      });
 
-    setEditingTaskIndex(null);
-    setEditingTaskTime("");
-    setEditingTaskText("");
+      if (!res.ok) {
+        console.error('Failed to update task');
+        return;
+      }
 
-    // Reload tasks
-    if (userId) {
+      setEditingTaskIndex(null);
+      setEditingTaskTime("");
+      setEditingTaskText("");
+
+      // Reload tasks
       loadTodayTasks(userId);
+    } catch (error) {
+      console.error('Error updating task:', error);
     }
   }
 
@@ -771,7 +778,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ display: "flex", gap: spacing.xs }}>
                       <button
-                        onClick={() => startEditingTask(idx, `${taskTime} – ${taskActivity}`)}
+                        onClick={() => startEditingTask(idx, task)}
                         style={{
                           background: "transparent",
                           border: "none",

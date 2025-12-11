@@ -3,6 +3,10 @@
     {
       "path": "/api/push/send-due",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/program/auto-generate",
+      "schedule": "0 12 * * 3"
     }
   ]
 }

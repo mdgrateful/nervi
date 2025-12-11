@@ -1,14 +1,67 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabase";
 import { logError } from "../../../../lib/logger";
+import OpenAI from "openai";
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+/**
+ * Parse natural language task input using AI
+ * Handles: "remind me to call mom tomorrow at 3pm", "meeting 2morrow 2pm", "call john at 5"
+ */
+async function parseTaskWithAI(taskInput) {
+  try {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()];
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You parse natural language task inputs into structured data.
+
+Today is ${dayOfWeek}, ${todayStr}.
+
+Extract:
+1. activity: The main task/action (clean up spelling, make it clear)
+2. time: Time in 12-hour format with AM/PM (e.g., "3:00 PM", "9:30 AM"). If no time specified, use "Anytime"
+3. date: ISO date (YYYY-MM-DD). Handle "today", "tomorrow", "tmrw", "2morrow", day names like "monday", "next week", etc.
+
+Return JSON: {"activity": "...", "time": "...", "date": "..."}
+
+Examples:
+- "remind me to call mom tomorrow at 3pm" → {"activity": "Call mom", "time": "3:00 PM", "date": "2025-12-12"}
+- "meeting 2morrow 2pm" → {"activity": "Meeting", "time": "2:00 PM", "date": "2025-12-12"}
+- "call john at 5" → {"activity": "Call John", "time": "5:00 PM", "date": "${todayStr}"}
+- "buy groceries" → {"activity": "Buy groceries", "time": "Anytime", "date": "${todayStr}"}
+- "workout monday 6am" → {"activity": "Workout", "time": "6:00 AM", "date": "2025-12-15"}`
+        },
+        {
+          role: "user",
+          content: taskInput
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (error) {
+    console.error("AI parsing failed:", error);
+    // Fallback to simple regex parsing
+    return null;
+  }
+}
+
 /**
  * POST /api/daily-tasks/custom
  * Add a custom task for the user
- * Body: { userId, taskInput } where taskInput is like "2:00 PM - Take a walk"
+ * Body: { userId, taskInput } where taskInput can be natural language
  */
 export async function POST(request) {
   try {
@@ -29,20 +82,27 @@ export async function POST(request) {
       );
     }
 
-    // Parse time and activity from input (e.g., "2:00 PM - Take a walk")
-    const timeMatch = taskInput.match(/^(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–]\s*(.+)$/);
-    let time, activity;
+    // Try AI parsing first for natural language understanding
+    let time, activity, taskDate;
+    const aiParsed = await parseTaskWithAI(taskInput);
 
-    if (timeMatch) {
-      time = timeMatch[1].trim();
-      activity = timeMatch[2].trim();
+    if (aiParsed) {
+      time = aiParsed.time || "Anytime";
+      activity = aiParsed.activity || taskInput.trim();
+      taskDate = aiParsed.date || new Date().toISOString().split('T')[0];
     } else {
-      // No time specified, just the activity
-      time = "Anytime";
-      activity = taskInput.trim();
+      // Fallback to simple regex parsing
+      const timeMatch = taskInput.match(/^(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–]?\s*(.+)$/);
+      if (timeMatch) {
+        time = timeMatch[1].trim();
+        activity = timeMatch[2].trim();
+      } else {
+        time = "Anytime";
+        activity = taskInput.trim();
+      }
+      taskDate = new Date().toISOString().split('T')[0];
     }
 
-    const today = new Date().toISOString().split('T')[0];
     const taskId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Insert task into database
@@ -51,7 +111,7 @@ export async function POST(request) {
       .insert({
         user_id: userId,
         task_id: taskId,
-        task_date: today,
+        task_date: taskDate,
         time: time,
         activity: activity,
         why: null,
@@ -85,6 +145,77 @@ export async function POST(request) {
     logError("Failed to process POST request", error, { endpoint: "/api/daily-tasks/custom" });
     return NextResponse.json(
       { error: "Failed to add task" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/daily-tasks/custom
+ * Edit an existing task (both custom and AI-generated)
+ * Body: { userId, taskId, updates: { time?, activity?, why? } }
+ */
+export async function PATCH(request) {
+  try {
+    const body = await request.json();
+    const { userId, taskId, updates } = body;
+
+    if (!userId || !taskId || !updates) {
+      return NextResponse.json(
+        { error: "Missing userId, taskId, or updates" },
+        { status: 400 }
+      );
+    }
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Build the update object - only include provided fields
+    const updateFields = {};
+    if (updates.time !== undefined) updateFields.time = updates.time;
+    if (updates.activity !== undefined) updateFields.activity = updates.activity;
+    if (updates.why !== undefined) updateFields.why = updates.why;
+
+    // Update task in database
+    const { data, error } = await supabase
+      .from('nervi_daily_tasks')
+      .update(updateFields)
+      .eq('user_id', userId)
+      .eq('task_id', taskId)
+      .eq('task_date', today)
+      .select()
+      .single();
+
+    if (error) {
+      logError("Failed to update task", error, { operation: "update_task" });
+      return NextResponse.json(
+        { error: "Failed to update task" },
+        { status: 500 }
+      );
+    }
+
+    // Return updated task in frontend format
+    return NextResponse.json({
+      success: true,
+      task: {
+        id: data.task_id,
+        time: data.time,
+        activity: data.activity,
+        why: data.why,
+        dataSource: data.data_source,
+        completed: data.completed,
+      },
+    });
+  } catch (error) {
+    logError("Failed to process PATCH request", error, { endpoint: "/api/daily-tasks/custom" });
+    return NextResponse.json(
+      { error: "Failed to update task" },
       { status: 500 }
     );
   }

@@ -10,10 +10,70 @@ export const dynamic = 'force-dynamic';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { userId, tasks, taskDate } = body;
+
+    if (!userId || !tasks || !Array.isArray(tasks)) {
+      return NextResponse.json(
+        { error: "Missing userId or tasks array" },
+        { status: 400 }
+      );
+    }
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
+    const date = taskDate || new Date().toISOString().split('T')[0];
+
+    // Insert tasks into database
+    const tasksToInsert = tasks.map(task => ({
+      user_id: userId,
+      task_id: task.id,
+      task_date: date,
+      time: task.time,
+      activity: task.activity,
+      why: task.why,
+      data_source: task.dataSource,
+      completed: task.completed || false,
+    }));
+
+    const { data, error } = await supabase
+      .from('nervi_daily_tasks')
+      .insert(tasksToInsert)
+      .select();
+
+    if (error) {
+      logError("Failed to save daily tasks", error, { operation: "save_daily_tasks" });
+      return NextResponse.json(
+        { error: "Failed to save tasks" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      savedTasks: data,
+    });
+  } catch (error) {
+    logError("Failed to process POST request", error, { endpoint: "/api/daily-tasks" });
+    return NextResponse.json(
+      { error: "Failed to save tasks" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
+    const forceRegenerate = searchParams.get("regenerate") === "true";
 
     if (!userId) {
       return NextResponse.json(
@@ -22,9 +82,48 @@ export async function GET(request) {
       );
     }
 
-    if (!supabase || !openai) {
+    if (!supabase) {
       return NextResponse.json(
-        { error: "Services not configured" },
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if tasks already exist for today (unless force regenerate)
+    if (!forceRegenerate) {
+      const { data: existingTasks, error: fetchError } = await supabase
+        .from('nervi_daily_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('task_date', today)
+        .order('created_at', { ascending: true });
+
+      if (!fetchError && existingTasks && existingTasks.length > 0) {
+        // Return existing tasks
+        const tasks = existingTasks.map(task => ({
+          id: task.task_id,
+          time: task.time,
+          activity: task.activity,
+          why: task.why,
+          dataSource: task.data_source,
+          completed: task.completed,
+        }));
+
+        return NextResponse.json({
+          success: true,
+          tasks,
+          source: 'database',
+          generatedAt: existingTasks[0].created_at,
+        });
+      }
+    }
+
+    // No existing tasks or force regenerate - generate new ones
+    if (!openai) {
+      return NextResponse.json(
+        { error: "AI service not configured" },
         { status: 500 }
       );
     }
@@ -35,15 +134,39 @@ export async function GET(request) {
     // Generate personalized daily tasks with AI
     const tasks = await generatePersonalizedTasks(userId, userContext);
 
+    // Save generated tasks to database
+    if (tasks.length > 0) {
+      const tasksToInsert = tasks.map(task => ({
+        user_id: userId,
+        task_id: task.id,
+        task_date: today,
+        time: task.time,
+        activity: task.activity,
+        why: task.why,
+        data_source: task.dataSource,
+        completed: task.completed || false,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('nervi_daily_tasks')
+        .insert(tasksToInsert);
+
+      if (insertError) {
+        logError("Failed to save generated tasks", insertError, { operation: "save_generated_tasks" });
+        // Continue anyway - we'll return the tasks even if save failed
+      }
+    }
+
     return NextResponse.json({
       success: true,
       tasks,
+      source: 'generated',
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    logError("Failed to generate daily tasks", error, { endpoint: "/api/daily-tasks" });
+    logError("Failed to fetch/generate daily tasks", error, { endpoint: "/api/daily-tasks" });
     return NextResponse.json(
-      { error: "Failed to generate tasks" },
+      { error: "Failed to get tasks" },
       { status: 500 }
     );
   }
