@@ -631,6 +631,17 @@ export default function DashboardPage() {
                     {notificationError}
                   </div>
                 )}
+                <a
+                  href="/debug"
+                  style={{
+                    fontSize: "10px",
+                    color: theme.textMuted,
+                    textDecoration: "none",
+                    marginTop: "4px",
+                  }}
+                >
+                  Debug notifications
+                </a>
               </div>
             </div>
 
