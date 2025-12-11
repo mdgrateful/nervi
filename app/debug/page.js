@@ -170,6 +170,38 @@ ${data.tasks.map(t => `
     }
   }
 
+  async function forceSendNotification() {
+    setStatus(prev => ({ ...prev, testResult: "Forcing notification send..." }));
+
+    try {
+      const res = await fetch('/api/push/send-due');
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatus(prev => ({ ...prev, testResult: `❌ Error: ${data.error || 'Failed to send'}` }));
+        return;
+      }
+
+      const result = `
+✅ Force Send Complete!
+
+- Status: ${data.ok ? 'OK' : 'Failed'}
+- Notifications sent: ${data.notificationsSent || 0}
+- Message: ${data.message || 'Check if notification appeared'}
+
+If you didn't receive a notification:
+1. Check iOS Settings → Notifications → Safari
+2. Make sure Focus mode is OFF
+3. Ensure app is added to Home Screen
+4. Try the "Test Local Notification" button above
+      `.trim();
+
+      setStatus(prev => ({ ...prev, testResult: result }));
+    } catch (error) {
+      setStatus(prev => ({ ...prev, testResult: `❌ Error: ${error.message}` }));
+    }
+  }
+
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "monospace" }}>
       <div style={{ marginBottom: "20px" }}>
@@ -249,6 +281,22 @@ ${data.tasks.map(t => `
           }}
         >
           Test Task Timing
+        </button>
+
+        <button
+          onClick={forceSendNotification}
+          style={{
+            padding: "10px 20px",
+            margin: "5px",
+            background: "#dc3545",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          🚀 Force Send Now
         </button>
 
         <button
