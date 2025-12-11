@@ -123,6 +123,7 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div
+          className="mobile-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -132,6 +133,7 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
             background: 'rgba(0, 0, 0, 0.5)',
             zIndex: 998,
             animation: 'fadeIn 0.3s ease',
+            display: 'none', // Hidden by default, shown only on mobile via CSS
           }}
         />
       )}
@@ -204,13 +206,13 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
       {/* Auth Links - Top Right */}
       <div
         style={{
-          position: 'absolute',
-          top: spacing.md,
-          right: spacing.md,
+          position: 'fixed',
+          top: spacing.lg,
+          right: spacing.xl,
           display: 'flex',
           alignItems: 'center',
           gap: spacing.sm,
-          zIndex: 1000,
+          zIndex: 1001, // Above header (1000) but integrated with it
         }}
         className="auth-links"
       >
@@ -356,6 +358,10 @@ export function SharedNav({ currentPage = "/", theme = lightTheme, onToggleTheme
         }
 
         @media (max-width: 768px) {
+          .mobile-overlay {
+            display: block !important;
+          }
+
           .mobile-menu-button {
             display: flex !important;
           }
