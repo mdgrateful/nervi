@@ -122,6 +122,51 @@ export default function DebugPage() {
     }
   }
 
+  async function testTaskTiming() {
+    setStatus(prev => ({ ...prev, testResult: "Checking task timing..." }));
+
+    try {
+      const userId = localStorage.getItem("nerviUserId");
+      if (!userId) {
+        setStatus(prev => ({ ...prev, testResult: "No userId found in localStorage" }));
+        return;
+      }
+
+      const res = await fetch(`/api/push/test-due?userId=${userId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatus(prev => ({ ...prev, testResult: `Error: ${data.error}` }));
+        return;
+      }
+
+      // Format the result nicely
+      const result = `
+📅 Debug Info:
+- Server time: ${data.debug.now}
+- Today's date: ${data.debug.today}
+- Current minutes: ${data.debug.nowMinutes} (${data.debug.nowTime})
+- Has push subscription: ${data.hasPushSubscription ? '✅' : '❌'}
+
+📋 Tasks:
+- Total tasks today: ${data.totalTasks}
+- Tasks in 5-min window: ${data.tasksInWindow.length}
+
+${data.tasks.map(t => `
+  ${t.wouldTrigger ? '🔔' : '⏰'} ${t.activity}
+  Time: ${t.time} (${t.taskMinutes} mins)
+  Minutes until: ${t.minutesUntil}
+  Completed: ${t.completed ? '✅' : '❌'}
+  Would trigger: ${t.wouldTrigger ? 'YES' : 'NO'}
+`).join('\n')}
+      `.trim();
+
+      setStatus(prev => ({ ...prev, testResult: result }));
+    } catch (error) {
+      setStatus(prev => ({ ...prev, testResult: `Error: ${error.message}` }));
+    }
+  }
+
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto", fontFamily: "monospace" }}>
       <h1>Notification Debug</h1>
@@ -173,6 +218,21 @@ export default function DebugPage() {
           }}
         >
           Register/Re-register Push
+        </button>
+
+        <button
+          onClick={testTaskTiming}
+          style={{
+            padding: "10px 20px",
+            margin: "5px",
+            background: "#ff9800",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer"
+          }}
+        >
+          Test Task Timing
         </button>
 
         <button
